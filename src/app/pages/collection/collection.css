@@ -1,9 +1,48 @@
-.page { padding-top: 20px; }
-.placeholder-text {
-  margin-top: 14px;
-  font-style: italic;
-  color: var(--text-dim);
-  border: 1px dashed var(--border-dim);
-  padding: 40px 20px;
-  text-align: center;
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 14px;
 }
+@media (min-width: 1200px) {
+  .card-grid { grid-template-columns: repeat(10, 1fr); }
+}
+
+.card-slot { animation: fadeInUp .5s ease both; }
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.create-card {
+  aspect-ratio: 3 / 4;
+  border: 2px dashed var(--border);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: all .3s;
+  background: rgba(200,149,42,.03);
+}
+.create-card:hover { border-color: var(--gold); background: rgba(200,149,42,.08); }
+.create-card svg { color: var(--gold-dark); margin-bottom: 8px; transition: color .3s; }
+.create-card:hover svg { color: var(--gold-light); }
+.create-card-label {
+  font-family: 'Cinzel', serif; font-size: 9px; letter-spacing: .15em;
+  color: var(--gold-dark); text-transform: uppercase; transition: color .3s;
+}
+.create-card:hover .create-card-label { color: var(--gold); }
+
+.toast {
+  position: fixed;
+  bottom: 30px; left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: var(--surface2);
+  border: 1px solid var(--gold);
+  color: var(--gold-light);
+  font-family: 'Cinzel', serif;
+  font-size: 11px;
+  letter-spacing: .2em;
+  padding: 12px 24px;
+  z-index: 100;
+  transition: transform .4s cubic-bezier(.175,.885,.32,1.275);
+  pointer-events: none;
+}
+.toast.show { transform: translateX(-50%) translateY(0); }

@@ -1,0 +1,19 @@
+<div class="controls-bar">
+  <div class="view-toggle">
+    <!-- [class.active] = conditional class: on when the expression is true -->
+    <button class="toggle-btn" [class.active]="view() === 'frame'" (click)="setView('frame')">By Warframe</button>
+    <button class="toggle-btn" [class.active]="view() === 'loadout'" (click)="setView('loadout')">By Loadout</button>
+  </div>
+
+  <div class="search-bar">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <!-- (input) fires on every keystroke -->
+    <input type="text" placeholder="Search frames or loadouts..." (input)="onSearch($event)" />
+  </div>
+
+  <div class="filter-chips">
+    <button class="filter-chip" [class.active]="filter() === 'all'" (click)="setFilter('all')">All</button>
+    <button class="filter-chip" [class.active]="filter() === 'has'" (click)="setFilter('has')">Has Loadout</button>
+    <button class="filter-chip" [class.active]="filter() === 'empty'" (click)="setFilter('empty')">Empty</button>
+  </div>
+</div>

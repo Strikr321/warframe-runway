@@ -1,19 +1,20 @@
 /* ═══════════════════════════════════════════════════════════
    GLOBAL STYLES — loaded on every page of the app.
-   These are the shared design tokens ported from both
-   prototypes. Page-specific CSS lives next to each component.
+   Shared design tokens ported from the prototypes.
+   Page-specific CSS lives next to each component.
    ═══════════════════════════════════════════════════════════ */
 :root {
-  --bg: #0f0505;
-  --surface: #170808;
-  --surface2: #1e0a0a;
+  --bg: #0a0303;
+  --surface: rgba(20, 8, 8, .85);
+  --surface2: rgba(35, 15, 10, .9);
   --gold: #c8952a;
   --gold-light: #f0c050;
   --gold-dark: #7a5a18;
-  --border: rgba(200, 149, 42, .35);
-  --border-dim: rgba(200, 149, 42, .15);
+  --orange: #e8641a;
+  --border: rgba(200, 149, 42, .3);
+  --border-dim: rgba(200, 149, 42, .12);
   --text: #e8d8c0;
-  --text-dim: #8a7a60;
+  --text-dim: #8a7060;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -23,7 +24,25 @@ body {
   color: var(--text);
   font-family: 'Raleway', sans-serif;
   min-height: 100vh;
+  overflow-x: hidden;
 }
+
+/* Ambient background glow, ported from the prototype */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 50% at 50% 0%, rgba(107, 26, 26, .5), transparent 70%),
+    radial-gradient(ellipse 40% 40% at 80% 90%, rgba(150, 60, 0, .15), transparent 60%),
+    radial-gradient(ellipse 30% 30% at 10% 60%, rgba(200, 149, 42, .05), transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--gold-dark); border-radius: 3px; }
 
 .section-label {
   font-family: 'Cinzel', serif;
@@ -31,4 +50,14 @@ body {
   letter-spacing: .35em;
   color: var(--gold);
   text-transform: uppercase;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.section-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--gold-dark), transparent);
 }

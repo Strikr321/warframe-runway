@@ -1,0 +1,36 @@
+<div class="card-wrapper">
+  <div
+    class="frame-card"
+    [class.empty]="isEmpty"
+    [style.transform]="transform"
+    (mousemove)="onMove($event)"
+    (mouseleave)="onLeave()"
+    (click)="onClick()"
+  >
+    <!-- Gloss highlight tracks the mouse via CSS custom properties -->
+    <div class="card-gloss" [style.--mouse-x]="glossX + '%'" [style.--mouse-y]="glossY + '%'"></div>
+
+    <!-- @if = conditional rendering -->
+    @if (badge() && loadouts().length > 0) {
+      <div class="card-badge">{{ loadouts().length }}</div>
+    }
+
+    @if (!isEmpty) {
+      <div class="card-fav" [class.is-fav]="hasFav" (click)="onFavClick($event)">★</div>
+    }
+
+    <div class="card-inner">
+      @if (first; as l) {
+        <div class="card-colors">
+          @for (c of l.colors; track $index) {
+            <div class="card-color-dot" [style.background]="c"></div>
+          }
+        </div>
+      }
+      <div class="card-frame-name">{{ frame() }}</div>
+      @if (first; as l) {
+        <div class="card-loadout-name">{{ l.name }}</div>
+      }
+    </div>
+  </div>
+</div>

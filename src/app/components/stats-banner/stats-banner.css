@@ -1,0 +1,20 @@
+.stats-banner { display: flex; justify-content: center; gap: 40px; margin: 4px 0 24px; flex-wrap: wrap; }
+
+.stat-item { text-align: center; position: relative; }
+.stat-item::after {
+  content: ''; position: absolute; right: -20px; top: 50%; transform: translateY(-50%);
+  width: 1px; height: 30px;
+  background: linear-gradient(to bottom, transparent, var(--gold-dark), transparent);
+}
+.stat-item:last-child::after { display: none; }
+
+.stat-value {
+  font-family: 'Cinzel Decorative', serif; font-size: 28px; font-weight: 700;
+  color: var(--gold-light); text-shadow: 0 0 15px rgba(240, 192, 80, .3); line-height: 1;
+}
+.stat-value .stat-total { font-size: 16px; color: var(--text-dim); font-family: 'Raleway', sans-serif; font-weight: 400; }
+
+.stat-label { font-family: 'Cinzel', serif; font-size: 9px; letter-spacing: .3em; color: var(--gold); text-transform: uppercase; margin-top: 4px; }
+
+.stat-bar { width: 100px; height: 3px; background: rgba(200, 149, 42, .15); border-radius: 2px; margin: 6px auto 0; overflow: hidden; }
+.stat-bar-fill { height: 100%; background: linear-gradient(90deg, var(--gold-dark), var(--gold-light)); border-radius: 2px; transition: width 1s ease; }

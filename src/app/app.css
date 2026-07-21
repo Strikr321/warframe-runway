@@ -1,4 +1,4 @@
-header { text-align: center; padding: 28px 20px 0; }
+header { text-align: center; padding: 28px 20px 0; position: relative; z-index: 1; }
 
 .header-logo {
   font-family: 'Cinzel Decorative', serif;
@@ -6,9 +6,9 @@ header { text-align: center; padding: 28px 20px 0; }
   font-weight: 700;
   color: var(--gold-light);
   letter-spacing: .18em;
-  text-shadow: 0 0 25px rgba(240, 192, 80, .35);
+  text-shadow: 0 0 30px rgba(240, 192, 80, .5), 0 0 60px rgba(240, 192, 80, .15);
 }
-.header-logo span { color: var(--gold); font-size: .6em; vertical-align: middle; }
+.header-logo span { color: var(--orange); font-size: .6em; vertical-align: middle; text-shadow: 0 0 20px rgba(232, 100, 26, .4); }
 
 .header-sub {
   font-family: 'Cinzel', serif;
@@ -48,4 +48,4 @@ nav a.active {
   background: rgba(200, 149, 42, .12);
 }
 
-main { max-width: 1400px; margin: 0 auto; padding: 30px 20px 60px; }
+main { max-width: 1400px; margin: 0 auto; padding: 30px 20px 60px; position: relative; z-index: 1; }

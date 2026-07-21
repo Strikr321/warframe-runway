@@ -1,0 +1,17 @@
+<div class="stats-banner">
+  <div class="stat-item">
+    <!-- {{ }} = interpolation: print a value from the class -->
+    <div class="stat-value">{{ styled() }} <span class="stat-total">/ {{ total() }}</span></div>
+    <div class="stat-label">Frames Styled</div>
+    <!-- [style.width.%] = property binding: CSS driven by data -->
+    <div class="stat-bar"><div class="stat-bar-fill" [style.width.%]="pct"></div></div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-value">{{ loadouts() }}</div>
+    <div class="stat-label">Total Loadouts</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-value">{{ favorites() }}</div>
+    <div class="stat-label">Favorites</div>
+  </div>
+</div>
