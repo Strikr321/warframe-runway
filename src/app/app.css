@@ -1,0 +1,51 @@
+header { text-align: center; padding: 28px 20px 0; }
+
+.header-logo {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: clamp(26px, 4vw, 40px);
+  font-weight: 700;
+  color: var(--gold-light);
+  letter-spacing: .18em;
+  text-shadow: 0 0 25px rgba(240, 192, 80, .35);
+}
+.header-logo span { color: var(--gold); font-size: .6em; vertical-align: middle; }
+
+.header-sub {
+  font-family: 'Cinzel', serif;
+  font-size: clamp(9px, 1.3vw, 13px);
+  letter-spacing: .5em;
+  color: var(--gold);
+  margin-top: 6px;
+  opacity: .85;
+}
+
+.header-line { display: flex; align-items: center; gap: 12px; margin-top: 14px; justify-content: center; }
+.header-line::before, .header-line::after {
+  content: ''; flex: 1; max-width: 220px; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+}
+.header-diamond {
+  width: 7px; height: 7px; background: var(--gold);
+  transform: rotate(45deg); box-shadow: 0 0 8px var(--gold);
+}
+
+nav { display: flex; justify-content: center; gap: 8px; margin-top: 18px; }
+nav a {
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--text-dim);
+  border: 1px solid var(--border-dim);
+  padding: 8px 20px;
+  transition: all .25s;
+}
+nav a:hover { color: var(--gold); border-color: var(--border); }
+nav a.active {
+  color: var(--gold-light);
+  border-color: var(--gold);
+  background: rgba(200, 149, 42, .12);
+}
+
+main { max-width: 1400px; margin: 0 auto; padding: 30px 20px 60px; }

@@ -1,0 +1,34 @@
+/* ═══════════════════════════════════════════════════════════
+   GLOBAL STYLES — loaded on every page of the app.
+   These are the shared design tokens ported from both
+   prototypes. Page-specific CSS lives next to each component.
+   ═══════════════════════════════════════════════════════════ */
+:root {
+  --bg: #0f0505;
+  --surface: #170808;
+  --surface2: #1e0a0a;
+  --gold: #c8952a;
+  --gold-light: #f0c050;
+  --gold-dark: #7a5a18;
+  --border: rgba(200, 149, 42, .35);
+  --border-dim: rgba(200, 149, 42, .15);
+  --text: #e8d8c0;
+  --text-dim: #8a7a60;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Raleway', sans-serif;
+  min-height: 100vh;
+}
+
+.section-label {
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  letter-spacing: .35em;
+  color: var(--gold);
+  text-transform: uppercase;
+}

@@ -1,0 +1,17 @@
+<!-- Shared header — ported from the prototypes -->
+<header>
+  <div class="header-logo">WARFR<span>&#9650;</span>ME</div>
+  <div class="header-sub">Fashion Frame Runway</div>
+  <div class="header-line"><div class="header-diamond"></div></div>
+
+  <!-- routerLink = Angular's <a href> that swaps pages WITHOUT reloading -->
+  <nav>
+    <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Collection</a>
+    <a routerLink="/builder" routerLinkActive="active">Builder</a>
+  </nav>
+</header>
+
+<!-- The current page renders here, chosen by app.routes.ts -->
+<main>
+  <router-outlet></router-outlet>
+</main>

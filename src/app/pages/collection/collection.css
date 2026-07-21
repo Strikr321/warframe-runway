@@ -1,0 +1,9 @@
+.page { padding-top: 20px; }
+.placeholder-text {
+  margin-top: 14px;
+  font-style: italic;
+  color: var(--text-dim);
+  border: 1px dashed var(--border-dim);
+  padding: 40px 20px;
+  text-align: center;
+}
