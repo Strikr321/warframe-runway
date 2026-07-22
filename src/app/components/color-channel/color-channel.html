@@ -1,0 +1,26 @@
+<div class="color-channel">
+  <div class="channel-header" (click)="toggle()">
+    <div class="channel-dot" [style.background]="state().hex"></div>
+    <div class="channel-name">{{ channelName() }}</div>
+    <div class="channel-label">{{ state().label }}</div>
+    <div class="channel-swatch" [style.background]="state().hex"></div>
+    <span class="channel-chevron" [style.transform]="open() ? 'rotate(90deg)' : ''">&#9656;</span>
+  </div>
+
+  @if (open()) {
+    <div class="palette-picker open">
+      <select class="palette-select" [value]="activePalette()" (change)="onPaletteSelect($event)">
+        @for (n of paletteNames; track n) {
+          <option [value]="n">{{ n }}</option>
+        }
+      </select>
+
+      <app-palette-grid
+        [palette]="activeCells()"
+        [selectedCol]="activePalette() === state().palette ? state().col : -1"
+        [selectedRow]="activePalette() === state().palette ? state().row : -1"
+        (pick)="onPick($event)"
+      />
+    </div>
+  }
+</div>

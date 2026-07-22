@@ -1,4 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
 import { FRAMES, Loadout } from '../../models/loadout.model';
 import { LoadoutService } from '../../services/loadout.service';
 import { StatsBanner } from '../../components/stats-banner/stats-banner';
@@ -7,15 +8,10 @@ import { ControlsBar, ViewMode, ChipFilter } from '../../components/controls-bar
 import { FrameCard } from '../../components/frame-card/frame-card';
 
 /**
- * STEP 3 CHANGE: the page no longer OWNS data — it ASKS for it.
- *
- *   Step 2:  loadouts = signal(DUMMY_LOADOUTS)     // page owns data
- *   Step 3:  loadouts = this.store.loadouts        // service owns data
- *
- * `inject(LoadoutService)` is dependency injection: Angular hands us
- * THE shared instance (same one the Builder will get in Step 4).
- * Everything downstream — stats, recent, filters — is untouched,
- * because computed() doesn't care WHERE the signal came from.
+ * STEP 4 CHANGE: openFrame/openLoadout/newLoadout now navigate for
+ * real instead of showing a toast. This is the moment the two pages
+ * become one app — clicking a card takes you to the Builder with
+ * that exact loadout loaded.
  */
 @Component({
   selector: 'app-collection',
@@ -25,9 +21,9 @@ import { FrameCard } from '../../components/frame-card/frame-card';
 })
 export class Collection {
   private store = inject(LoadoutService);
+  private router = inject(Router);
 
-  // ── State ────────────────────────────────────────────────
-  loadouts = this.store.loadouts;        // read-only signal from the service
+  loadouts = this.store.loadouts;
   view = signal<ViewMode>('frame');
   search = signal('');
   filter = signal<ChipFilter>('all');
@@ -35,7 +31,6 @@ export class Collection {
   frames = FRAMES;
   toast = signal('');
 
-  // ── Derived state (identical to Step 2 — that's the point) ──
   stats = computed(() => {
     const all = this.loadouts();
     return {
@@ -46,17 +41,13 @@ export class Collection {
     };
   });
 
-  /** Now genuinely recent: real timestamps, sorted newest first. */
   recent = computed(() =>
-    [...this.loadouts()]
-      .sort((a, b) => b.edited.localeCompare(a.edited))
-      .slice(0, 4)
+    [...this.loadouts()].sort((a, b) => b.edited.localeCompare(a.edited)).slice(0, 4)
   );
 
   filteredFrames = computed(() => {
     const q = this.search().toLowerCase();
     const f = this.filter();
-    // Reading loadouts() here makes this computed re-run on data changes
     const all = this.loadouts();
     return this.frames.filter(frame => {
       if (q && !frame.toLowerCase().includes(q)) return false;
@@ -74,26 +65,26 @@ export class Collection {
       .sort((a, b) => a.frame.localeCompare(b.frame) || a.name.localeCompare(b.name));
   });
 
-  // ── Helpers & event handlers ─────────────────────────────
   loadoutsFor(frame: string): Loadout[] {
     return this.store.byFrame(frame);
   }
 
+  /** Card in By-Warframe view is only clickable when non-empty (FrameCard enforces this),
+   *  so loadoutsFor(frame)[0] is guaranteed to exist here. */
   openFrame(frame: string) {
-    const n = this.loadoutsFor(frame).length;
-    this.showToast(`Opening ${frame} — ${n} loadout${n > 1 ? 's' : ''}`);
-    // Step 4: router.navigate(['/builder', id])
+    const first = this.loadoutsFor(frame)[0];
+    this.router.navigate(['/builder', first.id]);
   }
 
   openLoadout(l: Loadout) {
-    this.showToast(`Opening ${l.frame} — ${l.name}`);
+    this.router.navigate(['/builder', l.id]);
   }
 
+  /** No frame preselected — the Builder defaults to the first frame in the list. */
   newLoadout() {
-    this.showToast('Opening editor — New Loadout');
+    this.router.navigate(['/builder']);
   }
 
-  /** Favorites now go through the service — one door for writes. */
   toggleFav(frame: string) {
     const first = this.loadoutsFor(frame)[0];
     if (first) this.store.toggleFav(first.id);
@@ -103,7 +94,6 @@ export class Collection {
     this.store.toggleFav(l.id);
   }
 
-  // ── Demo data controls (temporary until the Builder exists) ──
   seedDemo() {
     this.store.seedDemo();
     this.showToast('Sample loadouts loaded');

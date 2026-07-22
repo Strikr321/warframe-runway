@@ -1,0 +1,26 @@
+<div class="panel">
+  <div class="section-label" style="margin-bottom:12px">Loadout</div>
+
+  <div class="loadout-row">
+    <div class="loadout-label">Creator Name<small>Your name</small></div>
+    <!-- [value] + (input) = manual two-way binding. We could use [(ngModel)],
+         but writing it explicitly shows exactly what's happening: read the
+         input down, emit changes up. No hidden magic. -->
+    <input type="text" class="loadout-input" placeholder="e.g. Tenno"
+           [value]="creator()" (input)="creatorChange.emit($any($event.target).value)" />
+  </div>
+
+  <div class="loadout-row">
+    <div class="loadout-label">Loadout Name<small>Title</small></div>
+    <input type="text" class="loadout-input" placeholder="e.g. Corrupted Lightning"
+           [value]="name()" (input)="nameChange.emit($any($event.target).value)" />
+  </div>
+
+  @for (f of fields; track f.key) {
+    <div class="loadout-row">
+      <div class="loadout-label">{{ f.label }}<small>{{ f.hint }}</small></div>
+      <input type="text" class="loadout-input" [placeholder]="'e.g. Protovyre'"
+             [value]="attachments()[f.key]" (input)="updateField(f.key, $event)" />
+    </div>
+  }
+</div>

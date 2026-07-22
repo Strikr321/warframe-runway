@@ -1,0 +1,12 @@
+<div class="frame-selector-wrap">
+  <div class="section-label">Select Warframe</div>
+  <div class="frame-grid">
+    @for (frame of frames; track frame) {
+      <button
+        class="frame-btn"
+        [class.active]="frame === selected()"
+        (click)="select.emit(frame)"
+      >{{ frame }}</button>
+    }
+  </div>
+</div>

@@ -1,0 +1,12 @@
+<div class="color-grid" [style.grid-template-columns]="'repeat(' + numCols() + ', 18px)'"
+     [style.grid-template-rows]="'repeat(' + numRows() + ', 18px)'">
+  @for (cell of cells(); track cell.col + '-' + cell.row) {
+    <div
+      class="color-cell"
+      [class.selected]="cell.col === selectedCol() && cell.row === selectedRow()"
+      [style.background]="cell.hex"
+      [title]="cell.label + ' — ' + cell.hex"
+      (click)="pick.emit({ row: cell.row, col: cell.col, hex: cell.hex })"
+    ></div>
+  }
+</div>

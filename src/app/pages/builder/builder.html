@@ -1,7 +1,41 @@
-<div class="page">
-  <div class="section-label">Fashion Frame Builder</div>
-  <p class="placeholder-text">
-    The builder — frame selector, color palette channels, loadout
-    inputs, and the poster generator. Coming in Step 4.
-  </p>
+<app-frame-selector [selected]="frame()" (select)="frame.set($event)" />
+
+<div class="main-layout">
+
+  <app-loadout-form
+    class="panel-slot"
+    [creator]="creator()"
+    [name]="name()"
+    [attachments]="attachments()"
+    (creatorChange)="creator.set($event)"
+    (nameChange)="name.set($event)"
+    (attachmentsChange)="attachments.set($event)"
+  />
+
+  <div class="panel color-panel">
+    <div class="section-label" style="margin-bottom:10px">Color Palette</div>
+    @for (ch of channels; track ch.key) {
+      <app-color-channel
+        [channelName]="ch.name"
+        [state]="colorState()[ch.key]"
+        (change)="onChannelChange(ch.key, $event)"
+      />
+    }
+  </div>
+
+  <!-- Step 4b placeholder — poster canvas, image upload, layout picker,
+       and export all arrive here as their own dedicated build. -->
+  <div class="coming-soon">
+    <div class="coming-soon-label">Poster Generator</div>
+    <p>Screenshot upload, in-game color-accurate poster rendering, layout picker, and PNG export arrive in Step 4b.</p>
+  </div>
+
+  <div class="action-bar">
+    @if (isEditing()) {
+      <button class="btn-danger" (click)="delete()">Delete Loadout</button>
+    }
+    <button class="btn-secondary" (click)="cancel()">Cancel</button>
+    <button class="btn-primary" (click)="save()">{{ isEditing() ? 'Save Changes' : 'Create Loadout' }}</button>
+  </div>
+
 </div>
