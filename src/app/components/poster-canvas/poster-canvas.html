@@ -1,0 +1,165 @@
+<div class="poster-generator">
+
+  <div class="section-label" style="margin-bottom:10px">Poster Generator</div>
+
+  <div class="main-layout">
+
+    <!-- Upload zone -->
+    <div class="upload-zone"
+         [class.has-image]="hasImage()"
+         [class.drag-over]="dragOver()"
+         #uploadZone
+         (click)="onZoneClick($event)"
+         (dragover)="onDragOver($event)"
+         (dragleave)="onDragLeave()"
+         (drop)="onDrop($event)">
+      <div class="corner-tl"></div><div class="corner-tr"></div>
+      <div class="corner-bl"></div><div class="corner-br"></div>
+
+      @if (!hasImage()) {
+        <div class="upload-placeholder">
+          <div class="upload-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+          </div>
+          <h3>Upload Screenshot</h3>
+          <p>Drag &amp; drop, click to browse, or Ctrl+V to paste</p>
+        </div>
+      }
+
+      @if (hasImage()) {
+        <img #previewImg [src]="imageDataUrl()" alt=""
+             [style.width]="previewStyle().width" [style.height]="previewStyle().height"
+             [style.left]="previewStyle().left" [style.top]="previewStyle().top" />
+
+        @if (cropOverlay(); as ov) {
+          <div class="crop-overlay" [style.height.px]="ov.zoneH">
+            <div class="crop-dark" [style.left]="'0'" [style.width.px]="ov.leftDark"></div>
+            <div class="crop-dark" [style.left.px]="ov.rightDarkLeft" [style.width.px]="ov.rightDarkWidth"></div>
+            <div class="crop-line" [style.left.px]="ov.lineLeft"></div>
+            <div class="crop-line" [style.left.px]="ov.lineRight"></div>
+          </div>
+        }
+      }
+
+      <input #fileInput type="file" accept="image/*" style="display:none" (change)="onFileChange($event)" />
+
+      @if (hasImage()) {
+        <div class="img-controls" #imgControls (click)="$event.stopPropagation()">
+          <div class="ic-row">
+            <span class="ic-label">Zoom</span>
+            <input type="range" class="ic-slider" min="30" max="200" step="1" [value]="imgZoom()"
+                   (input)="imgZoom.set($any($event.target).valueAsNumber); onSliderChange()" />
+            <span class="ic-value">{{ imgZoom() }}%</span>
+            <button class="ic-reset" (click)="resetSliders()">Reset</button>
+          </div>
+          <div class="ic-row">
+            <span class="ic-label">Crop</span>
+            <input type="range" class="ic-slider" min="0" max="100" step="1" [value]="imgCrop()"
+                   (input)="imgCrop.set($any($event.target).valueAsNumber); onSliderChange()" />
+            <span class="ic-value">{{ imgCrop() }}%</span>
+          </div>
+          <div class="ic-row">
+            <span class="ic-label">Pan X</span>
+            <input type="range" class="ic-slider" min="-500" max="500" step="1" [value]="imgPanX()"
+                   (input)="imgPanX.set($any($event.target).valueAsNumber); onSliderChange()" />
+            <span class="ic-value">{{ imgPanX() }}</span>
+          </div>
+          <div class="ic-row">
+            <span class="ic-label">Pan Y</span>
+            <input type="range" class="ic-slider" min="-500" max="500" step="1" [value]="imgPanY()"
+                   (input)="imgPanY.set($any($event.target).valueAsNumber); onSliderChange()" />
+            <span class="ic-value">{{ imgPanY() }}</span>
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- Poster background colors -->
+    <div class="panel bg-panel">
+      <div class="section-label" style="margin-bottom:10px">Poster Background</div>
+      <div class="poster-colors-row">
+        <div class="poster-color-col">
+          <div class="poster-color-label">Color 1 (Top)</div>
+          <div class="poster-color-swatch" (click)="openColorPicker(1)">
+            <div class="swatch-fill" [style.background]="posterColor1()?.hex ?? '#3a0808'"></div>
+            <span class="swatch-label">{{ posterColor1()?.label ?? '— Select —' }}</span>
+          </div>
+        </div>
+        <div class="poster-color-col">
+          <div class="poster-color-label">Color 2 (Bottom)</div>
+          <div class="poster-color-swatch" (click)="openColorPicker(2)">
+            <div class="swatch-fill" [style.background]="posterColor2()?.hex ?? '#080202'"></div>
+            <span class="swatch-label">{{ posterColor2()?.label ?? '— Select —' }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="gradient-control">
+        <span class="ic-label">Angle</span>
+        <input type="range" class="ic-slider" min="0" max="360" step="1" [value]="gradientAngle()" (input)="onGradientAngleChange($event)" />
+        <span class="ic-value">{{ gradientAngle() }}&deg;</span>
+      </div>
+    </div>
+
+    <!-- Layout picker -->
+    <div class="layout-picker">
+      <div class="section-label" style="margin-bottom:12px">Poster Layout</div>
+      <div class="layout-options">
+        @for (key of layoutKeys; track key) {
+          <div class="layout-option" [class.active]="key === selectedLayoutKey()" (click)="selectLayout(key)">
+            <div class="layout-thumb">
+              <div class="lt-header"></div>
+              <div class="lt-img" [style.left]="layouts[key].thumb.img.left" [style.right]="layouts[key].thumb.img.right"
+                   [style.top]="layouts[key].thumb.img.top" [style.width]="layouts[key].thumb.img.width" [style.height]="layouts[key].thumb.img.height"></div>
+              <div class="lt-text" [style.left]="layouts[key].thumb.text.left" [style.top]="layouts[key].thumb.text.top"
+                   [style.width]="layouts[key].thumb.text.width" [style.height]="layouts[key].thumb.text.height"></div>
+              @if (layouts[key].thumb.text2; as t2) {
+                <div class="lt-text" [style.left]="t2.left" [style.top]="t2.top" [style.width]="t2.width" [style.height]="t2.height"></div>
+              }
+              <div class="lt-name" [style.left]="layouts[key].thumb.name.left" [style.bottom]="layouts[key].thumb.name.bottom"
+                   [style.top]="layouts[key].thumb.name.top" [style.width]="layouts[key].thumb.name.width" [style.height]="layouts[key].thumb.name.height"></div>
+            </div>
+            <div class="layout-option-label">{{ layouts[key].name }}</div>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Export -->
+    <div class="export-panel">
+      <div class="section-label" style="margin-bottom:12px;text-align:left">Export</div>
+      <button class="export-btn" (click)="generatePoster()">Generate Poster</button>
+      @if (posterReady()) {
+        <button class="export-btn secondary" (click)="download()">Download PNG</button>
+        <button class="export-btn secondary" (click)="copyPosterToClipboard()">Copy Poster Image</button>
+      }
+      <button class="export-btn secondary" (click)="copyLoadoutText()">Copy Loadout as Text</button>
+    </div>
+
+    <!-- Poster preview -->
+    <div class="poster-wrap" [class.visible]="posterReady()">
+      <canvas #posterCanvas></canvas>
+    </div>
+
+  </div>
+
+  <!-- Poster color picker modal (reuses PaletteGrid) -->
+  @if (colorPickerTarget(); as target) {
+    <div class="modal open" (click)="closeColorPicker()">
+      <div class="modal-box" (click)="$event.stopPropagation()">
+        <button class="modal-close" (click)="closeColorPicker()">&times;</button>
+        <div class="section-label">Choose Poster Color {{ target }}{{ target === 1 ? ' (Top)' : ' (Bottom)' }}</div>
+        <select class="palette-select" [value]="pickerPaletteName()" (change)="onPickerPaletteSelect($event)">
+          @for (n of paletteNames; track n) {
+            <option [value]="n">{{ n }}</option>
+          }
+        </select>
+        <app-palette-grid [palette]="pickerCells()" (pick)="pickPosterColor($event)" />
+      </div>
+    </div>
+  }
+
+  <div class="toast" [class.show]="toast()">{{ toast() }}</div>
+</div>

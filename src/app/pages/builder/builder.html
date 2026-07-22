@@ -23,11 +23,14 @@
     }
   </div>
 
-  <!-- Step 4b placeholder — poster canvas, image upload, layout picker,
-       and export all arrive here as their own dedicated build. -->
-  <div class="coming-soon">
-    <div class="coming-soon-label">Poster Generator</div>
-    <p>Screenshot upload, in-game color-accurate poster rendering, layout picker, and PNG export arrive in Step 4b.</p>
+  <div class="poster-slot">
+    <app-poster-canvas
+      [frame]="frame()"
+      [name]="name()"
+      [creator]="creator()"
+      [attachments]="attachments()"
+      [colorState]="colorState()"
+    />
   </div>
 
   <div class="action-bar">

@@ -8,27 +8,17 @@ import { LoadoutService } from '../../services/loadout.service';
 import { FrameSelector } from '../../components/frame-selector/frame-selector';
 import { LoadoutForm } from '../../components/loadout-form/loadout-form';
 import { ColorChannel } from '../../components/color-channel/color-channel';
+import { PosterCanvas } from '../../components/poster-canvas/poster-canvas';
 
 /**
- * THE BUILDER — Step 4a.
- * ======================
- * Reads an optional :id from the route:
- *   /builder        -> blank draft (optionally preselecting ?frame=X)
- *   /builder/:id    -> loads that loadout for editing
- *
- * On Save, hands the assembled draft to LoadoutService — the SAME
- * shared instance the Collection page reads from. Navigate back to
- * '/' and Collection already shows it. No refresh, no event bus,
- * no manual sync: this is dependency injection paying off exactly
- * the way Step 3's notes promised.
- *
- * Not in this step: image upload, poster canvas, layout picker,
- * export. Those are Step 4b — a big enough graphics engine to
- * deserve its own focused, visually-tested build.
+ * THE BUILDER — Step 4b adds the Poster Generator.
+ * PosterCanvas is a leaf: it reads frame/name/creator/attachments/
+ * colorState as inputs to render text, but owns all of its own
+ * image/crop/layout/export state internally (see poster-canvas.ts).
  */
 @Component({
   selector: 'app-builder',
-  imports: [FrameSelector, LoadoutForm, ColorChannel],
+  imports: [FrameSelector, LoadoutForm, ColorChannel, PosterCanvas],
   templateUrl: './builder.html',
   styleUrl: './builder.css',
 })
@@ -39,7 +29,6 @@ export class Builder {
 
   channels = CHANNELS;
 
-  /** null = creating new; set = editing this existing loadout's id */
   editingId = signal<string | null>(null);
 
   frame = signal<string>(FRAMES[0]);
@@ -54,12 +43,7 @@ export class Builder {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       const existing = this.store.byId(id);
-      if (existing) {
-        this.loadDraft(existing);
-      }
-      // If the id doesn't match anything (bad link, deleted elsewhere),
-      // we silently fall through to a blank new-loadout draft rather
-      // than crashing the page.
+      if (existing) this.loadDraft(existing);
     } else {
       const queryFrame = this.route.snapshot.queryParamMap.get('frame');
       if (queryFrame && FRAMES.includes(queryFrame)) {
@@ -89,7 +73,7 @@ export class Builder {
       creator: this.creator().trim() || 'Tenno',
       colors: summaryColors(this.colorState()),
       fav: this.isEditing() ? (this.store.byId(this.editingId()!)?.fav ?? false) : false,
-      edited: new Date().toISOString(), // overwritten again inside the service, kept here for type completeness
+      edited: new Date().toISOString(),
       attachments: this.attachments(),
       colorState: this.colorState(),
     };
