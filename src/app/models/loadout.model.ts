@@ -76,7 +76,7 @@ export function defaultColorState(): Record<ChannelKey, ColorChannelState> {
 
 /** The 4 dots shown on Collection cards — a readable summary, not the full 8 channels. */
 export function summaryColors(colorState: Record<ChannelKey, ColorChannelState>): string[] {
-  return [colorState.primary.hex, colorState.secondary.hex, colorState.en1.hex, colorState.en2.hex];
+  return [colorState.primary.hex, colorState.secondary.hex, colorState.tertiary.hex, colorState.accents.hex];
 }
 
 /** All frames in the game — drives the "By Warframe" grid and the Frame Selector. */
