@@ -7,7 +7,16 @@
   [favorites]="stats().favorites"
 />
 
-<app-recent-row [loadouts]="recent()" (open)="openLoadout($event)" />
+<!-- Empty state: a fresh browser has zero loadouts now that data is real -->
+@if (loadouts().length === 0) {
+  <div class="empty-banner">
+    <div class="empty-title">No loadouts yet</div>
+    <p>The Builder arrives in Step 4 — until then, you can explore with sample data.</p>
+    <button class="seed-btn" (click)="seedDemo()">Load Sample Loadouts</button>
+  </div>
+} @else {
+  <app-recent-row [loadouts]="recent()" (open)="openLoadout($event)" />
+}
 
 <app-controls-bar
   (viewChange)="view.set($event)"
@@ -16,8 +25,6 @@
 />
 
 <div class="card-grid">
-  <!-- Create card — always first. Owned by the page: it never repeats
-       elsewhere, so it doesn't earn its own component. -->
   <div class="card-slot">
     <div class="create-card" (click)="newLoadout()">
       <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -28,7 +35,6 @@
   </div>
 
   @if (view() === 'frame') {
-    <!-- By Warframe: one card per frame, 64 stamps of the same component -->
     @for (frame of filteredFrames(); track frame) {
       <app-frame-card
         [frame]="frame"
@@ -38,17 +44,16 @@
       />
     }
   } @else {
-    <!-- By Loadout: one card per loadout; badge off (always exactly 1) -->
     @for (l of filteredLoadouts(); track l.id) {
       <app-frame-card
         [frame]="l.frame"
         [loadouts]="[l]"
         [badge]="false"
         (open)="openLoadout(l)"
+        (toggleFav)="toggleFavLoadout(l)"
       />
     }
   }
 </div>
 
-<!-- Toast — [class.show] toggles the slide-up animation -->
 <div class="toast" [class.show]="toast()">{{ toast() }}</div>

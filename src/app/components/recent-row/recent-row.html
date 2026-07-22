@@ -1,10 +1,7 @@
 <div class="recent-section">
   <div class="section-label">Recently Edited</div>
   <div class="recent-row">
-    <!-- @for = template loop. `track l.id` tells Angular how to tell
-         items apart so it only re-renders what actually changed. -->
     @for (l of loadouts(); track l.id) {
-      <!-- (click) = event binding. emit() fires our @Output upward. -->
       <div class="recent-card" (click)="open.emit(l)">
         <div class="recent-card-frame">{{ l.frame }}</div>
         <div class="recent-card-name">{{ l.name }}</div>
@@ -13,7 +10,8 @@
             <div class="recent-color-dot" [style.background]="c"></div>
           }
         </div>
-        <div class="recent-card-time">{{ l.edited }}</div>
+        <!-- The pipe: raw ISO timestamp in, human words out -->
+        <div class="recent-card-time">{{ l.edited | timeAgo }}</div>
       </div>
     }
   </div>

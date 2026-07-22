@@ -46,3 +46,34 @@
   pointer-events: none;
 }
 .toast.show { transform: translateX(-50%) translateY(0); }
+
+/* ── Empty state (Step 3) ── */
+.empty-banner {
+  border: 1px dashed var(--border);
+  background: rgba(200,149,42,.03);
+  text-align: center;
+  padding: 28px 20px;
+  margin-bottom: 28px;
+}
+.empty-title {
+  font-family: 'Cinzel', serif;
+  font-size: 14px;
+  letter-spacing: .2em;
+  color: var(--gold-light);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.empty-banner p { font-size: 12px; color: var(--text-dim); font-style: italic; margin-bottom: 14px; }
+.seed-btn {
+  background: rgba(200,149,42,.12);
+  border: 1px solid var(--gold);
+  color: var(--gold-light);
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  padding: 10px 24px;
+  cursor: pointer;
+  transition: all .25s;
+}
+.seed-btn:hover { background: rgba(200,149,42,.25); box-shadow: 0 0 15px rgba(200,149,42,.25); }
