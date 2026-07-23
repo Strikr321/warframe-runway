@@ -7,6 +7,14 @@
   [favorites]="stats().favorites"
 />
 
+<!-- Tangible proof the live fetch is working: shows the real frame
+     count and cache age. If a new frame ships, "total" above and this
+     count both grow on their own, with zero code changes here. -->
+<div class="catalog-status">
+  Frame catalog: {{ frames().length }} frames — {{ catalog.status() }}
+  @if (catalog.loading()) { <span class="catalog-loading"> · refreshing…</span> }
+</div>
+
 <!-- Empty state: a fresh browser has zero loadouts now that data is real -->
 @if (loadouts().length === 0) {
   <div class="empty-banner">

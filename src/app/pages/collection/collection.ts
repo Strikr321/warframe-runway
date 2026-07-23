@@ -1,7 +1,8 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { FRAMES, Loadout } from '../../models/loadout.model';
+import { Loadout } from '../../models/loadout.model';
 import { LoadoutService } from '../../services/loadout.service';
+import { FrameCatalogService } from '../../services/frame-catalog.service';
 import { StatsBanner } from '../../components/stats-banner/stats-banner';
 import { RecentRow } from '../../components/recent-row/recent-row';
 import { ControlsBar, ViewMode, ChipFilter } from '../../components/controls-bar/controls-bar';
@@ -19,6 +20,10 @@ import { FrameCard } from '../../components/frame-card/frame-card';
  * Empty frame cards are now clickable too (FrameCard.createRequested),
  * and any card can spawn an ADDITIONAL loadout for its frame even once
  * it already has one, up to the 6-loadout cap.
+ *
+ * This delivery: `frames` now comes from FrameCatalogService (a live
+ * fetch, cached daily) instead of the hardcoded FRAMES constant — the
+ * grid genuinely grows when Digital Extremes ships a new frame.
  */
 @Component({
   selector: 'app-collection',
@@ -29,6 +34,7 @@ import { FrameCard } from '../../components/frame-card/frame-card';
 export class Collection {
   private store = inject(LoadoutService);
   private router = inject(Router);
+  catalog = inject(FrameCatalogService);
 
   loadouts = this.store.loadouts;
   view = signal<ViewMode>('frame');
@@ -36,14 +42,14 @@ export class Collection {
   filter = signal<ChipFilter>('all');
   hoveredFrame = signal<string | null>(null);
 
-  frames = FRAMES;
+  frames = this.catalog.frames;
   toast = signal('');
 
   stats = computed(() => {
     const all = this.loadouts();
     return {
       styled: new Set(all.map(l => l.frame)).size,
-      total: FRAMES.length,
+      total: this.frames().length,
       loadouts: all.length,
       favorites: all.filter(l => l.fav).length,
     };
@@ -57,7 +63,7 @@ export class Collection {
     const q = this.search().toLowerCase();
     const f = this.filter();
     const all = this.loadouts();
-    return this.frames.filter(frame => {
+    return this.frames().filter(frame => {
       if (q && !frame.toLowerCase().includes(q)) return false;
       const count = all.filter(l => l.frame === frame).length;
       if (f === 'has') return count > 0;

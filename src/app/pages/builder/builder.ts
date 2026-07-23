@@ -1,20 +1,22 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
-  Attachments, ChannelKey, ColorChannelState, CHANNELS, FRAMES,
+  Attachments, ChannelKey, ColorChannelState, CHANNELS,
   Loadout, MAX_LOADOUTS_PER_FRAME, defaultColorState, emptyAttachments, summaryColors,
 } from '../../models/loadout.model';
 import { LoadoutService } from '../../services/loadout.service';
+import { FrameCatalogService } from '../../services/frame-catalog.service';
 import { FrameSelector } from '../../components/frame-selector/frame-selector';
 import { LoadoutForm } from '../../components/loadout-form/loadout-form';
 import { ColorChannel } from '../../components/color-channel/color-channel';
 import { PosterCanvas } from '../../components/poster-canvas/poster-canvas';
 
 /**
- * THE BUILDER — Step 4b adds the Poster Generator.
- * PosterCanvas is a leaf: it reads frame/name/creator/attachments/
- * colorState as inputs to render text, but owns all of its own
- * image/crop/layout/export state internally (see poster-canvas.ts).
+ * THE BUILDER — Step 4b added the Poster Generator. This delivery
+ * swaps the hardcoded FRAMES import for FrameCatalogService's live,
+ * fetched list — the Frame Selector now shows whatever the catalog
+ * currently has (including anything newly released), not a frozen
+ * snapshot from when this file was written.
  */
 @Component({
   selector: 'app-builder',
@@ -26,12 +28,13 @@ export class Builder {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private store = inject(LoadoutService);
+  catalog = inject(FrameCatalogService);
 
   channels = CHANNELS;
 
   editingId = signal<string | null>(null);
 
-  frame = signal<string>(FRAMES[0]);
+  frame = signal<string>(this.catalog.frames()[0] ?? 'Volt');
   name = signal('');
   creator = signal('');
   attachments = signal<Attachments>(emptyAttachments());
@@ -48,7 +51,7 @@ export class Builder {
       if (existing) this.loadDraft(existing);
     } else {
       const queryFrame = this.route.snapshot.queryParamMap.get('frame');
-      if (queryFrame && FRAMES.includes(queryFrame)) {
+      if (queryFrame && this.catalog.frames().includes(queryFrame)) {
         this.frame.set(queryFrame);
       }
     }

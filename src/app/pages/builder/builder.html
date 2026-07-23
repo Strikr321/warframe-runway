@@ -1,4 +1,4 @@
-<app-frame-selector [selected]="frame()" (select)="onFrameChange($event)" />
+<app-frame-selector [selected]="frame()" [frames]="catalog.frames()" (select)="onFrameChange($event)" />
 
 <div class="main-layout">
 

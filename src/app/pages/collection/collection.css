@@ -48,6 +48,16 @@
 .toast.show { transform: translateX(-50%) translateY(0); }
 
 /* ── Empty state (Step 3) ── */
+.catalog-status {
+  text-align: center;
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: .04em;
+  margin: -8px 0 20px;
+  opacity: .75;
+}
+.catalog-loading { color: var(--gold); }
+
 .empty-banner {
   border: 1px dashed var(--border);
   background: rgba(200,149,42,.03);
