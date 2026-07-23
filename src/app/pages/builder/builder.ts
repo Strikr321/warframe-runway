@@ -2,7 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
   Attachments, ChannelKey, ColorChannelState, CHANNELS, FRAMES,
-  Loadout, defaultColorState, emptyAttachments, summaryColors,
+  Loadout, MAX_LOADOUTS_PER_FRAME, defaultColorState, emptyAttachments, summaryColors,
 } from '../../models/loadout.model';
 import { LoadoutService } from '../../services/loadout.service';
 import { FrameSelector } from '../../components/frame-selector/frame-selector';
@@ -38,6 +38,8 @@ export class Builder {
   colorState = signal<Record<ChannelKey, ColorChannelState>>(defaultColorState());
 
   isEditing = computed(() => this.editingId() !== null);
+  /** Shown inline if a save is rejected for being past the per-frame cap. */
+  capMessage = signal('');
 
   constructor() {
     const id = this.route.snapshot.paramMap.get('id');
@@ -65,6 +67,11 @@ export class Builder {
     this.colorState.update(s => ({ ...s, [key]: next }));
   }
 
+  onFrameChange(frame: string) {
+    this.frame.set(frame);
+    this.capMessage.set(''); // a stale warning from a different frame shouldn't linger
+  }
+
   save() {
     const draft: Loadout = {
       id: this.editingId() ?? crypto.randomUUID(),
@@ -77,7 +84,11 @@ export class Builder {
       attachments: this.attachments(),
       colorState: this.colorState(),
     };
-    this.store.save(draft);
+    const ok = this.store.save(draft);
+    if (!ok) {
+      this.capMessage.set(`${this.frame()} already has ${MAX_LOADOUTS_PER_FRAME} loadouts — the max. Delete one first, or pick a different frame.`);
+      return;
+    }
     this.router.navigateByUrl('/');
   }
 

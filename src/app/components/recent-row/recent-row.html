@@ -2,7 +2,13 @@
   <div class="section-label">Recently Edited</div>
   <div class="recent-row">
     @for (l of loadouts(); track l.id) {
-      <div class="recent-card" (click)="open.emit(l)">
+      <div
+        class="recent-card"
+        [class.linked]="highlightedFrame() === l.frame"
+        (click)="open.emit(l)"
+        (mouseenter)="hoverChange.emit({ frame: l.frame, on: true })"
+        (mouseleave)="hoverChange.emit({ frame: l.frame, on: false })"
+      >
         <div class="recent-card-frame">{{ l.frame }}</div>
         <div class="recent-card-name">{{ l.name }}</div>
         <div class="recent-card-colors">

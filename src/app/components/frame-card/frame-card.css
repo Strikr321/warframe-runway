@@ -1,6 +1,18 @@
 .card-wrapper {
   perspective: 800px;
+  position: relative;
   animation: fadeInUp .5s ease both;
+}
+
+/* Gold glow when this frame is highlighted from the Recently Edited
+   row (or vice versa) — driven by the page's shared hoveredFrame signal. */
+.card-wrapper.linked .frame-card {
+  border-color: var(--gold-light);
+  box-shadow: 0 0 18px rgba(240, 192, 80, .35);
+}
+
+.card-wrapper:hover {
+  z-index: 30;
 }
 
 @keyframes fadeInUp {
@@ -91,3 +103,48 @@
 .frame-card.empty .card-gloss { display: none; }
 .frame-card.empty .card-frame-name { color: var(--text-dim); opacity: .4; }
 .frame-card.empty::before { opacity: .2; }
+
+/* ── Card action buttons ──────────────────────────────────────
+   Position and count depend on loadout count (see frame-card.html):
+   0 loadouts   -> one "+" bottom-right
+   1 loadout    -> "edit" bottom-left + "+" bottom-right
+   2-5 loadouts -> one "+" dead center (fan-out cards move AWAY
+                   from center by design, so this stays clear)
+   6 (max)      -> no create button at all — at the cap */
+.card-btn {
+  position: absolute; width: 22px; height: 22px; border-radius: 50%;
+  background: rgba(10,3,3,.6); border: 1px solid rgba(200,149,42,.55); color: var(--gold-light);
+  display: flex; align-items: center; justify-content: center; font-size: 12px; line-height: 1;
+  opacity: 0; transition: opacity .2s, background .2s; z-index: 12; cursor: pointer;
+}
+.card-wrapper:hover .card-btn { opacity: 1; }
+.card-btn:hover { background: rgba(200,149,42,.55); }
+.card-btn.pos-br { bottom: 6px; right: 6px; }
+.card-btn.pos-bl { bottom: 6px; left: 6px; }
+.card-btn.pos-center { top: 50%; left: 50%; transform: translate(-50%,-50%); }
+
+/* ── Fan-out guide ring ── */
+.fan-ring {
+  position: absolute; top: 50%; left: 50%; border-radius: 50%;
+  border: 1.5px solid rgba(200,149,42,.4);
+  box-shadow: 0 0 10px rgba(200,149,42,.12);
+  pointer-events: none; z-index: 6;
+  transition: transform .5s cubic-bezier(.2,.9,.3,1.3), opacity .32s;
+}
+
+/* ── Fan-out mini cards ── */
+.fan-mini {
+  position: absolute; top: 50%; left: 50%; width: 70px; aspect-ratio: 3/4;
+  background: linear-gradient(135deg, rgba(200,149,42,.16), rgba(15,5,5,.96));
+  border: 1px solid var(--gold); border-radius: 2px;
+  display: flex; flex-direction: column; justify-content: flex-end; padding: 6px 5px;
+  z-index: 10; box-shadow: 0 8px 20px rgba(0,0,0,.6); cursor: pointer;
+  transition: transform .5s cubic-bezier(.2,.9,.3,1.3), opacity .32s;
+}
+.fan-mini:hover { border-color: var(--gold-light); box-shadow: 0 0 14px rgba(240,192,80,.5); }
+.fm-colors { display: flex; gap: 2px; margin-bottom: 3px; }
+.fm-dot { width: 6px; height: 6px; border-radius: 50%; border: 1px solid rgba(255,255,255,.2); }
+.fm-name {
+  font-family: 'Cinzel', serif; font-size: 7.5px; color: var(--gold-light); letter-spacing: .04em;
+  line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}

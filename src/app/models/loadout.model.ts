@@ -17,6 +17,16 @@ export interface Loadout {
   colorState?: Record<ChannelKey, ColorChannelState>;
 }
 
+/**
+ * Nobody can have more than 6 loadouts for one Warframe. This isn't
+ * arbitrary — the Collection card's hover fan-out is a circle (1 flat,
+ * 2 up/down, 3 triangle, 4 square, 5 pentagon, 6 hexagon), and past 6
+ * it stops being readable as a shape. FrameCard hides its "create
+ * another" affordance once a frame hits this, and Builder refuses to
+ * save a brand-new loadout past it too.
+ */
+export const MAX_LOADOUTS_PER_FRAME = 6;
+
 export interface Attachments {
   skin: string;
   helmet: string;
@@ -76,7 +86,7 @@ export function defaultColorState(): Record<ChannelKey, ColorChannelState> {
 
 /** The 4 dots shown on Collection cards — a readable summary, not the full 8 channels. */
 export function summaryColors(colorState: Record<ChannelKey, ColorChannelState>): string[] {
-  return [colorState.primary.hex, colorState.secondary.hex, colorState.tertiary.hex, colorState.accents.hex];
+  return [colorState.primary.hex, colorState.secondary.hex, colorState.en1.hex, colorState.en2.hex];
 }
 
 /** All frames in the game — drives the "By Warframe" grid and the Frame Selector. */

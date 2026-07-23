@@ -25,6 +25,14 @@
   background: linear-gradient(135deg, rgba(200, 149, 42, .12), rgba(20, 8, 8, .9));
 }
 
+/* Lit up when the matching Collection card is hovered (or this card
+   itself is hovered, which fans out the matching Collection card) */
+.recent-card.linked {
+  border-color: var(--gold-light);
+  box-shadow: 0 0 16px rgba(240, 192, 80, .35);
+  transform: translateY(-2px);
+}
+
 .recent-card-frame { font-family: 'Cinzel', serif; font-size: 13px; color: var(--gold-light); letter-spacing: .1em; margin-bottom: 2px; }
 .recent-card-name { font-size: 11px; color: var(--text-dim); font-style: italic; }
 .recent-card-colors { display: flex; gap: 3px; margin-top: 8px; }

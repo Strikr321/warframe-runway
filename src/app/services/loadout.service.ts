@@ -1,5 +1,5 @@
 import { Injectable, effect, signal } from '@angular/core';
-import { Loadout } from '../models/loadout.model';
+import { Loadout, MAX_LOADOUTS_PER_FRAME } from '../models/loadout.model';
 
 /**
  * THE ONE BRAIN.
@@ -48,16 +48,27 @@ export class LoadoutService {
     return this._loadouts().find(l => l.id === id);
   }
 
+  /** False once a frame already has MAX_LOADOUTS_PER_FRAME — editing an
+   *  EXISTING loadout is always fine; this only gates creating a new one. */
+  canAddLoadout(frame: string): boolean {
+    return this.byFrame(frame).length < MAX_LOADOUTS_PER_FRAME;
+  }
+
   // ── Writes (the only door) ────────────────────────────────
-  /** Create or update — the Builder calls this in Step 4. */
-  save(loadout: Loadout): void {
+  /**
+   * Create or update. Returns false (and refuses to save) if this
+   * would be a brand-new loadout past the per-frame cap — editing an
+   * existing one always succeeds regardless of how many that frame has.
+   */
+  save(loadout: Loadout): boolean {
+    const isNew = !this._loadouts().some(l => l.id === loadout.id);
+    if (isNew && !this.canAddLoadout(loadout.frame)) return false;
+
     this._loadouts.update(all => {
       const stamped = { ...loadout, edited: new Date().toISOString() };
-      const exists = all.some(l => l.id === loadout.id);
-      return exists
-        ? all.map(l => (l.id === loadout.id ? stamped : l))
-        : [...all, stamped];
+      return isNew ? [...all, stamped] : all.map(l => (l.id === loadout.id ? stamped : l));
     });
+    return true;
   }
 
   delete(id: string): void {

@@ -1,16 +1,20 @@
-<div class="card-wrapper">
+<div
+  class="card-wrapper"
+  [class.linked]="highlighted()"
+  (mouseenter)="onWrapperEnter()"
+  (mouseleave)="onWrapperLeave()"
+>
   <div
     class="frame-card"
     [class.empty]="isEmpty"
     [style.transform]="transform"
     (mousemove)="onMove($event)"
     (mouseleave)="onLeave()"
-    (click)="onClick()"
+    (click)="onCardClick()"
   >
     <!-- Gloss highlight tracks the mouse via CSS custom properties -->
     <div class="card-gloss" [style.--mouse-x]="glossX + '%'" [style.--mouse-y]="glossY + '%'"></div>
 
-    <!-- @if = conditional rendering -->
     @if (badge() && loadouts().length > 0) {
       <div class="card-badge">{{ loadouts().length }}</div>
     }
@@ -33,4 +37,51 @@
       }
     </div>
   </div>
+
+  <!-- Card action buttons — count-dependent, see frame-card.ts atCap/isEmpty.
+       These are siblings of .frame-card (not nested inside it), same as
+       the fan-ring and mini-cards below: .frame-card sets its own
+       z-index, which would trap anything nested inside it in a LOWER
+       stacking layer than a true sibling — so a button nested inside
+       could never reliably out-rank a fan-mini card next to it,
+       regardless of its own z-index value. Keeping them as wrapper-level
+       siblings makes every z-index comparison direct and honest. -->
+  @if (isEmpty) {
+    <div class="card-btn pos-br" (click)="onCreateClick($event)" title="Create loadout for {{ frame() }}">+</div>
+  } @else if (loadouts().length === 1 && first) {
+    <div class="card-btn pos-bl" (click)="onEditClick($event)" title="Edit {{ first.name }}">&#9998;</div>
+    <div class="card-btn pos-br" (click)="onCreateClick($event)" title="Add another loadout">+</div>
+  } @else if (!atCap) {
+    <div class="card-btn pos-center" (click)="onCreateClick($event)" title="Add another loadout">+</div>
+  }
+
+  <!-- Fan-out: guide ring + one mini-card per loadout, always mounted
+       (not created/destroyed per hover) so the transform/opacity
+       transitions are ordinary CSS transitions, not a re-creation. -->
+  @if (loadouts().length >= 2) {
+    <div
+      class="fan-ring"
+      [style.width.px]="ringDiameter()"
+      [style.height.px]="ringDiameter()"
+      [style.opacity]="fanned() ? 1 : 0"
+      [style.transform]="fanned() ? 'translate(-50%,-50%) scale(1)' : 'translate(-50%,-50%) scale(.6)'"
+    ></div>
+
+    @for (l of loadouts(); track l.id; let i = $index) {
+      <div
+        class="fan-mini"
+        [style.opacity]="fanned() ? 1 : 0"
+        [style.pointer-events]="fanned() ? 'auto' : 'none'"
+        [style.transform]="miniTransform(i)"
+        (click)="onMiniClick(l, $event)"
+      >
+        <div class="fm-colors">
+          @for (c of l.colors.slice(0,3); track $index) {
+            <div class="fm-dot" [style.background]="c"></div>
+          }
+        </div>
+        <div class="fm-name">{{ l.name }}</div>
+      </div>
+    }
+  }
 </div>

@@ -1,4 +1,4 @@
-<app-frame-selector [selected]="frame()" (select)="frame.set($event)" />
+<app-frame-selector [selected]="frame()" (select)="onFrameChange($event)" />
 
 <div class="main-layout">
 
@@ -32,6 +32,10 @@
       [colorState]="colorState()"
     />
   </div>
+
+  @if (capMessage()) {
+    <div class="cap-message">{{ capMessage() }}</div>
+  }
 
   <div class="action-bar">
     @if (isEditing()) {

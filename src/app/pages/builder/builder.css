@@ -27,6 +27,16 @@
 }
 .coming-soon p { font-size: 12px; color: var(--text-dim); font-style: italic; max-width: 480px; margin: 0 auto; }
 
+.cap-message {
+  grid-column: 1 / -1;
+  border: 1px solid rgba(200, 60, 60, .4);
+  background: rgba(200, 40, 40, .08);
+  color: #ffb0b0;
+  font-size: 12.5px;
+  padding: 12px 16px;
+  text-align: center;
+}
+
 .action-bar {
   grid-column: 1 / -1;
   display: flex;

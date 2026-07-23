@@ -8,10 +8,17 @@ import { ControlsBar, ViewMode, ChipFilter } from '../../components/controls-bar
 import { FrameCard } from '../../components/frame-card/frame-card';
 
 /**
- * STEP 4 CHANGE: openFrame/openLoadout/newLoadout now navigate for
- * real instead of showing a toast. This is the moment the two pages
- * become one app — clicking a card takes you to the Builder with
- * that exact loadout loaded.
+ * STEP 5 CHANGE: `hoveredFrame` is the shared signal that links the
+ * Recently Edited row to the Collection grid in both directions —
+ * hover either one and both the matching grid card (fan-out + glow)
+ * and the matching Recently Edited card (glow) light up together.
+ * Neither child component knows about the other; they only know
+ * about this one shared piece of state on the page, which is the
+ * whole "smart page, dumb pieces" idea paying off again.
+ *
+ * Empty frame cards are now clickable too (FrameCard.createRequested),
+ * and any card can spawn an ADDITIONAL loadout for its frame even once
+ * it already has one, up to the 6-loadout cap.
  */
 @Component({
   selector: 'app-collection',
@@ -27,6 +34,7 @@ export class Collection {
   view = signal<ViewMode>('frame');
   search = signal('');
   filter = signal<ChipFilter>('all');
+  hoveredFrame = signal<string | null>(null);
 
   frames = FRAMES;
   toast = signal('');
@@ -69,36 +77,42 @@ export class Collection {
     return this.store.byFrame(frame);
   }
 
-  /** Card in By-Warframe view is only clickable when non-empty (FrameCard enforces this),
-   *  so loadoutsFor(frame)[0] is guaranteed to exist here. */
-  openFrame(frame: string) {
-    const first = this.loadoutsFor(frame)[0];
-    this.router.navigate(['/builder', first.id]);
+  // ── Navigation ────────────────────────────────────────────
+  /** Open one specific loadout by id — from a card's cover, or from
+   *  clicking a specific fanned-out mini-card. */
+  openLoadoutById(id: string) {
+    this.router.navigate(['/builder', id]);
   }
 
-  openLoadout(l: Loadout) {
-    this.router.navigate(['/builder', l.id]);
+  /** Create a new loadout for this frame — from an empty card, the
+   *  "+" on a populated card, or the generic New Loadout tile. */
+  createForFrame(frame?: string) {
+    if (frame) this.router.navigate(['/builder'], { queryParams: { frame } });
+    else this.router.navigate(['/builder']);
   }
 
-  /** No frame preselected — the Builder defaults to the first frame in the list. */
-  newLoadout() {
-    this.router.navigate(['/builder']);
+  // ── Hover linking (Recently Edited <-> grid, both directions) ──
+  onFrameHover(frame: string, on: boolean) {
+    this.hoveredFrame.set(on ? frame : null);
+  }
+  onRecentHover(evt: { frame: string; on: boolean }) {
+    this.hoveredFrame.set(evt.on ? evt.frame : null);
   }
 
+  // ── Favorites ─────────────────────────────────────────────
   toggleFav(frame: string) {
     const first = this.loadoutsFor(frame)[0];
     if (first) this.store.toggleFav(first.id);
   }
-
   toggleFavLoadout(l: Loadout) {
     this.store.toggleFav(l.id);
   }
 
+  // ── Demo data controls (temporary until real usage builds up) ──
   seedDemo() {
     this.store.seedDemo();
     this.showToast('Sample loadouts loaded');
   }
-
   clearAll() {
     this.store.clearAll();
     this.showToast('All loadouts cleared');
