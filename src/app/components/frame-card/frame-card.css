@@ -11,10 +11,6 @@
   box-shadow: 0 0 18px rgba(240, 192, 80, .35);
 }
 
-.card-wrapper:hover {
-  z-index: 30;
-}
-
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
@@ -107,7 +103,9 @@
 /* ── Card action buttons ──────────────────────────────────────
    Position and count depend on loadout count (see frame-card.html):
    0 loadouts   -> one "+" bottom-right
-   1 loadout    -> "edit" bottom-left + "+" bottom-right
+   1 loadout    -> "edit" stacked directly ABOVE "+", both bottom-right
+                   (keeps the whole left side clear for the frame/
+                   loadout name text, which is left-aligned)
    2-5 loadouts -> one "+" dead center (fan-out cards move AWAY
                    from center by design, so this stays clear)
    6 (max)      -> no create button at all — at the cap */
@@ -120,6 +118,7 @@
 .card-wrapper:hover .card-btn { opacity: 1; }
 .card-btn:hover { background: rgba(200,149,42,.55); }
 .card-btn.pos-br { bottom: 6px; right: 6px; }
+.card-btn.pos-br-stack { bottom: 32px; right: 6px; }
 .card-btn.pos-bl { bottom: 6px; left: 6px; }
 .card-btn.pos-center { top: 50%; left: 50%; transform: translate(-50%,-50%); }
 

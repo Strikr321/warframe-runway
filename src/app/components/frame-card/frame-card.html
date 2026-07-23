@@ -49,7 +49,7 @@
   @if (isEmpty) {
     <div class="card-btn pos-br" (click)="onCreateClick($event)" title="Create loadout for {{ frame() }}">+</div>
   } @else if (loadouts().length === 1 && first) {
-    <div class="card-btn pos-bl" (click)="onEditClick($event)" title="Edit {{ first.name }}">&#9998;</div>
+    <div class="card-btn pos-br-stack" (click)="onEditClick($event)" title="Edit {{ first.name }}">&#9998;</div>
     <div class="card-btn pos-br" (click)="onCreateClick($event)" title="Add another loadout">+</div>
   } @else if (!atCap) {
     <div class="card-btn pos-center" (click)="onCreateClick($event)" title="Add another loadout">+</div>
