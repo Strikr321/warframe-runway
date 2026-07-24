@@ -60,6 +60,20 @@ export class PosterCanvas {
 
   hasImage = computed(() => this.imageDataUrl() !== null);
 
+  // ── Auto-detected mode (new) ──────────────────────────────────
+  // null = no image yet. true = real alpha transparency found (a
+  // background-removed cutout) -> full-bleed rendering. false = fully
+  // opaque (a raw screenshot) -> the existing crop/mask rendering.
+  // A person can override this via modeOverride; when set, it wins
+  // over the detected value.
+  detectedTransparent = signal<boolean | null>(null);
+  modeOverride = signal<boolean | null>(null);
+  isTransparentMode = computed(() => this.modeOverride() ?? this.detectedTransparent());
+
+  toggleModeOverride() {
+    this.modeOverride.set(!this.isTransparentMode());
+  }
+
   // Preview positioning — recomputed imperatively (see updatePreview())
   // because it depends on the live pixel size of the upload zone,
   // something only the real DOM can tell us.
@@ -141,13 +155,44 @@ export class PosterCanvas {
         this.imageNaturalHeight.set(img.naturalHeight);
         this.imageDataUrl.set(dataUrl);
         this.resetSliders();
-        this.showToast('Screenshot loaded — adjust zoom & pan below');
+        this.modeOverride.set(null); // a new image gets a fresh auto-detection, not the last image's override
+        const transparent = this.detectTransparency(img);
+        this.detectedTransparent.set(transparent);
+        this.showToast(transparent
+          ? 'Cutout detected — full-bleed render'
+          : 'Screenshot loaded — adjust zoom & pan below');
         // Wait a tick for the preview <img> to actually exist in the DOM
         setTimeout(() => this.updatePreview(), 0);
       };
       img.src = dataUrl;
     };
     reader.readAsDataURL(file);
+  }
+
+  /**
+   * Reads the image's real alpha channel to decide which rendering
+   * pipeline fits — not just "is this a PNG" (opaque PNGs are common),
+   * but "does a meaningful fraction of it actually vary in opacity."
+   * A handful of stray semi-transparent pixels (compression artifacts,
+   * anti-aliased edges) shouldn't flip an otherwise-opaque screenshot
+   * into full-bleed mode, so this requires a real proportion, not just
+   * any non-255 pixel at all.
+   */
+  private detectTransparency(img: HTMLImageElement): boolean {
+    const cv = document.createElement('canvas');
+    // Sampling at a small fixed size is enough to answer "is there
+    // real transparency" without reading a full-resolution image.
+    const sw = 120, sh = Math.max(1, Math.round(120 * img.naturalHeight / img.naturalWidth));
+    cv.width = sw; cv.height = sh;
+    const ctx = cv.getContext('2d', { willReadFrequently: true })!;
+    ctx.drawImage(img, 0, 0, sw, sh);
+    const data = ctx.getImageData(0, 0, sw, sh).data;
+    let nonOpaque = 0;
+    const total = sw * sh;
+    for (let i = 3; i < data.length; i += 4) {
+      if (data[i] < 250) nonOpaque++;
+    }
+    return (nonOpaque / total) > 0.03; // >3% of the image has real transparency
   }
 
   @HostListener('window:resize')
@@ -290,6 +335,316 @@ export class PosterCanvas {
   private rgbaStr(hex: string, alpha = 1): string {
     const [r, g, b] = this.hexToRgb(hex);
     return `rgba(${r},${g},${b},${alpha})`;
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // NEW ENGINE — full-bleed compositing for background-removed
+  // cutouts. Ported from a Python/PIL prototype built and approved
+  // against real screenshots before any of this was written as
+  // TypeScript — the algorithm itself isn't a guess.
+  // ═══════════════════════════════════════════════════════════
+
+  private mixRgb(c1: [number,number,number], c2: [number,number,number], t: number): [number,number,number] {
+    return [c1[0]+(c2[0]-c1[0])*t, c1[1]+(c2[1]-c1[1])*t, c1[2]+(c2[2]-c1[2])*t];
+  }
+  private rgbCss(c: [number,number,number], a = 1): string {
+    return `rgba(${Math.round(c[0])},${Math.round(c[1])},${Math.round(c[2])},${a})`;
+  }
+
+  /**
+   * Trims excess transparent padding around a cutout, using its real
+   * alpha channel — the same bounding-box scan as the Python version.
+   */
+  private trimTransparentBounds(imgData: ImageData): { x: number; y: number; w: number; h: number } {
+    const { data, width, height } = imgData;
+    let minX = width, minY = height, maxX = 0, maxY = 0;
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const a = data[(y * width + x) * 4 + 3];
+        if (a > 10) {
+          if (x < minX) minX = x; if (x > maxX) maxX = x;
+          if (y < minY) minY = y; if (y > maxY) maxY = y;
+        }
+      }
+    }
+    if (maxX < minX) return { x: 0, y: 0, w: width, h: height }; // fully empty — bail safely
+    const padX = Math.round((maxX - minX) * 0.025), padY = Math.round((maxY - minY) * 0.025);
+    const x = Math.max(0, minX - padX), y = Math.max(0, minY - padY);
+    const w = Math.min(width, maxX + padX) - x, h = Math.min(height, maxY + padY) - y;
+    return { x, y, w, h };
+  }
+
+  /**
+   * Same technique as the Python prototype: build a hue histogram
+   * weighted by saturation*value (so vivid, bright pixels count for
+   * more), find the peak hue, then represent it vividly rather than
+   * literally averaging — averaging a teal energy color with black
+   * armor produces muddy grey, not teal.
+   */
+  private dominantHueColor(imgData: ImageData): [number, number, number] {
+    const { data } = imgData;
+    const hist = new Float64Array(48);
+    const satAtHue: number[] = new Array(48).fill(0);
+    const valAtHue: number[] = new Array(48).fill(0);
+    const countAtHue: number[] = new Array(48).fill(0);
+
+    for (let i = 0; i < data.length; i += 4) {
+      const a = data[i+3];
+      if (a < 200) continue;
+      const r = data[i]/255, g = data[i+1]/255, b = data[i+2]/255;
+      const max = Math.max(r,g,b), min = Math.min(r,g,b);
+      const v = max;
+      const s = max > 0 ? (max-min)/max : 0;
+      if (s <= 0.28 || v <= 0.18 || v >= 0.97) continue;
+      let h = 0;
+      if (max === min) h = 0;
+      else if (max === r) h = ((g-b)/(max-min)) % 6;
+      else if (max === g) h = (b-r)/(max-min) + 2;
+      else h = (r-g)/(max-min) + 4;
+      h = h/6; if (h < 0) h += 1;
+      const bin = Math.min(47, Math.floor(h*48));
+      const w = s*v;
+      hist[bin] += w; satAtHue[bin] += s*w; valAtHue[bin] += v*w; countAtHue[bin] += w;
+    }
+    let peak = 0;
+    for (let i = 1; i < 48; i++) if (hist[i] > hist[peak]) peak = i;
+    if (hist[peak] < 1e-6) return [140,140,160];
+    const peakHue = (peak + 0.5) / 48;
+    const medS = countAtHue[peak] > 0 ? satAtHue[peak]/countAtHue[peak] : 0.6;
+    const medV = countAtHue[peak] > 0 ? valAtHue[peak]/countAtHue[peak] : 0.6;
+    const vividS = Math.min(0.85, Math.max(0.55, medS*1.3));
+    const vividV = Math.min(0.95, Math.max(0.55, medV*1.2));
+    return this.hsvToRgb(peakHue, vividS, vividV);
+  }
+
+  private hsvToRgb(h: number, s: number, v: number): [number, number, number] {
+    const i = Math.floor(h*6), f = h*6-i, p = v*(1-s), q = v*(1-f*s), t = v*(1-(1-f)*s);
+    let r=0,g=0,b=0;
+    switch (i%6) {
+      case 0: r=v;g=t;b=p; break; case 1: r=q;g=v;b=p; break; case 2: r=p;g=v;b=t; break;
+      case 3: r=p;g=q;b=v; break; case 4: r=t;g=p;b=v; break; case 5: r=v;g=p;b=q; break;
+    }
+    return [r*255, g*255, b*255];
+  }
+
+  /** The bell-curve atmospheric gradient + glow + vignette, same as the approved mockups. */
+  private drawAtmosphereBg(ctx: CanvasRenderingContext2D, W: number, H: number, accent: [number,number,number]) {
+    const deep = this.mixRgb(accent, [5,4,8], 0.88);
+    const mid = this.mixRgb(accent, [10,8,14], 0.55);
+    const bandCenter = 0.34, bandWidth = 0.19;
+
+    // Vertical bell-curve gradient, built from many sampled stops on a
+    // NATIVE CanvasGradient. This replaced a per-row fillRect loop —
+    // same visual math, but a real gradient is continuous by
+    // construction rather than 1750 individually-rounded 1px strips.
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+    const STOPS = 32;
+    for (let i = 0; i <= STOPS; i++) {
+      const t = i / STOPS;
+      const glow = Math.exp(-((t-bandCenter)**2)/(2*bandWidth**2));
+      bgGrad.addColorStop(t, this.rgbCss(this.mixRgb(deep, mid, glow)));
+    }
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Soft radial glow — a NATIVE radial gradient, not blurred discrete
+    // shapes. ctx.filter('blur') is a fast approximation, not a true
+    // Gaussian, and at large radii it doesn't fully smooth away the
+    // boundaries between stacked shapes — that's what was showing up
+    // as visible concentric rings. A gradient has no boundaries to
+    // begin with; it's continuous math, so there's nothing to blur.
+    const gcx = W*0.5, gcy = H*0.38, maxRad = 620;
+    const glowGrad = ctx.createRadialGradient(gcx, gcy, 0, gcx, gcy, maxRad);
+    glowGrad.addColorStop(0,    this.rgbCss(accent, 0.22));
+    glowGrad.addColorStop(0.3,  this.rgbCss(accent, 0.17));
+    glowGrad.addColorStop(0.6,  this.rgbCss(accent, 0.09));
+    glowGrad.addColorStop(1,    this.rgbCss(accent, 0));
+    ctx.fillStyle = glowGrad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Vignette — same approach: a radial gradient, transparent center,
+    // darkening toward the far corners, rather than a blurred rectangle.
+    const vigGrad = ctx.createRadialGradient(W/2, H*0.45, H*0.35, W/2, H*0.45, H*0.85);
+    vigGrad.addColorStop(0, this.rgbCss(deep, 0));
+    vigGrad.addColorStop(1, this.rgbCss(deep, 0.65));
+    ctx.fillStyle = vigGrad;
+    ctx.fillRect(0, 0, W, H);
+
+    return deep;
+  }
+
+  private drawGoldFrame(ctx: CanvasRenderingContext2D, W: number, H: number) {
+    const outer = 22, inner = 32;
+    ctx.strokeStyle = 'rgba(200,160,90,.65)'; ctx.lineWidth = 2;
+    ctx.strokeRect(outer, outer, W-outer*2, H-outer*2);
+    ctx.strokeStyle = 'rgba(200,160,90,.35)'; ctx.lineWidth = 1;
+    ctx.strokeRect(inner, inner, W-inner*2, H-inner*2);
+    const dsize = 7, dcx = (outer+inner)/2;
+    for (const [x,y] of [[dcx,dcx],[W-dcx,dcx],[dcx,H-dcx],[W-dcx,H-dcx]] as [number,number][]) {
+      ctx.save(); ctx.translate(x,y); ctx.rotate(Math.PI/4);
+      ctx.fillStyle = 'rgb(200,160,90)';
+      ctx.fillRect(-dsize,-dsize,dsize*2,dsize*2);
+      ctx.restore();
+    }
+  }
+
+  /** Centered header text with manual letter-tracking (works in every browser, not just ones with ctx.letterSpacing). */
+  private drawTrackedText(ctx: CanvasRenderingContext2D, text: string, cx: number, y: number, tracking: number) {
+    const widths = Array.from(text).map(ch => ctx.measureText(ch).width);
+    const total = widths.reduce((a,b) => a+b, 0) + tracking*(text.length-1);
+    let x = cx - total/2;
+    for (let i = 0; i < text.length; i++) {
+      ctx.fillText(text[i], x, y);
+      x += widths[i] + tracking;
+    }
+  }
+
+  /**
+   * LAYOUT: Classic Left, transparent mode.
+   * Full-bleed character (no mask, no rectangle — the alpha channel
+   * IS the silhouette), atmospheric background sampled from the
+   * character's own colors, a single right-side text column sized to
+   * the real number of filled-in fields, gold outer frame.
+   */
+  private async generateClassicLeftTransparent() {
+    await document.fonts.ready;
+    const cv = this.canvasRef.nativeElement;
+    const ctx = cv.getContext('2d')!;
+    const W = 1400, H = 1750;
+    cv.width = W; cv.height = H;
+
+    const rawImg = await this.loadImgEl(this.imageDataUrl()!);
+    // Read full-resolution pixel data once — used for both trimming and color extraction
+    const scanCv = document.createElement('canvas');
+    scanCv.width = rawImg.naturalWidth; scanCv.height = rawImg.naturalHeight;
+    const scanCtx = scanCv.getContext('2d', { willReadFrequently: true })!;
+    scanCtx.drawImage(rawImg, 0, 0);
+    const fullData = scanCtx.getImageData(0, 0, scanCv.width, scanCv.height);
+
+    const bounds = this.trimTransparentBounds(fullData);
+    const accent = this.dominantHueColor(fullData);
+    const deep = this.drawAtmosphereBg(ctx, W, H, accent);
+
+    // Header layout is computed from REAL measured text metrics, not a
+    // guessed baseline — this is exactly the bug that put "WARFRAME"
+    // overlapping the frame's border: a hardcoded y=62 assumed a
+    // certain cap-height that didn't match what actually rendered.
+    // Measuring first means this can never drift out of sync with
+    // whatever font/weight actually gets used.
+    const FRAME_INNER = 32, TITLE_TOP_MARGIN = 20;
+    ctx.font = '600 58px Cinzel, serif';
+    const titleAscent = ctx.measureText('WARFRAME').actualBoundingBoxAscent || 42;
+    const titleBaseline = FRAME_INNER + TITLE_TOP_MARGIN + titleAscent;
+    const subBaseline = titleBaseline + 66;
+    const dividerY = subBaseline + 20;
+
+    const HEADER_BOTTOM = dividerY, SIG_TOP_MARGIN = 220;
+    const FRAME_SAFE_MARGIN = 68; // keeps clear of the gold frame's inner border on the sides
+    const TOP_CLEARANCE = 90;     // keeps clear of the header divider — was 24, too thin to read as real breathing room at actual size
+    const BOTTOM_MARGIN = Math.round(H*0.058);
+
+    // Fit the character within BOTH a max height and a max width —
+    // scaling by height alone (the old approach) let any character
+    // whose silhouette is proportionally WIDE (wide horns, spread
+    // shoulder guards) push past the frame's sides, since nothing was
+    // ever checking width. This is the same "contain" logic as
+    // object-fit: contain — take whichever of the two scale factors
+    // is smaller, so neither dimension can ever overflow.
+    const maxH = (H - BOTTOM_MARGIN) - (HEADER_BOTTOM + TOP_CLEARANCE);
+    const maxW = W - FRAME_SAFE_MARGIN * 2;
+    const scaleByHeight = maxH / bounds.h;
+    const scaleByWidth = maxW / bounds.w;
+    const scale = Math.min(scaleByHeight, scaleByWidth);
+
+    const targetH = Math.round(bounds.h * scale);
+    const targetW = Math.round(bounds.w * scale);
+    const cx = Math.round((W - targetW)/2);
+    const cy = H - targetH - BOTTOM_MARGIN;
+
+    // Soft contact shadow at the feet
+    ctx.save();
+    ctx.filter = 'blur(22px)';
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.beginPath();
+    ctx.ellipse(cx+targetW*0.5, cy+targetH*0.995, targetW*0.38, targetH*0.03, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+
+    // Draw the TRIMMED region of the source image, scaled — this is
+    // the whole reason full-bleed works: we draw exactly the alpha
+    // silhouette, no mask shape imposed on top of it.
+    ctx.drawImage(rawImg, bounds.x, bounds.y, bounds.w, bounds.h, cx, cy, targetW, targetH);
+
+    const lightTxt: [number,number,number] = [232,226,214];
+    const dimTxt = this.mixRgb(lightTxt, deep, 0.45);
+    const accentLight = this.mixRgb(accent, [255,255,255], 0.45);
+
+    ctx.textBaseline = 'alphabetic';
+    ctx.font = '600 58px Cinzel, serif';
+    ctx.fillStyle = this.rgbCss(lightTxt);
+    this.drawTrackedText(ctx, 'WARFRAME', W/2, titleBaseline, 6);
+    ctx.font = '16px Cinzel, serif';
+    ctx.fillStyle = this.rgbCss(accentLight);
+    this.drawTrackedText(ctx, 'FASHION CARD', W/2, subBaseline, 10);
+    ctx.strokeStyle = this.rgbCss(accentLight, 0.55); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(W*0.34, dividerY); ctx.lineTo(W*0.66, dividerY); ctx.stroke();
+
+    // Text column — spacing computed from the REAL number of filled
+    // fields, not a fixed guess, so it fills the available band
+    // whether someone's set 2 fields or all 16.
+    const att = this.attachments();
+    const fields = LOADOUT_FIELDS.map(f => ({ label: f.label.toUpperCase(), value: att[f.key]?.trim() || '—' }));
+    const state = this.colorState();
+    const colorRows = CHANNELS.map(ch => ({ label: ch.name.toUpperCase(), value: state[ch.key].label || '—', hex: state[ch.key].hex }));
+
+    const textTop = HEADER_BOTTOM + 40;
+    const textBottom = H - SIG_TOP_MARGIN;
+    const totalEntries = fields.length + colorRows.length;
+    const dividerGap = 40;
+    const perEntry = totalEntries > 0 ? (textBottom - textTop - dividerGap) / totalEntries : 0;
+
+    const rx = W - 60; let ry = textTop;
+    ctx.textAlign = 'right';
+    for (const f of fields) {
+      ctx.font = '15px Cinzel, serif'; ctx.fillStyle = this.rgbCss(accentLight);
+      ctx.fillText(f.label, rx, ry);
+      ctx.font = '27px "Cormorant Garamond", serif'; ctx.fillStyle = this.rgbCss(lightTxt);
+      ctx.fillText(f.value, rx, ry+29);
+      ry += perEntry;
+    }
+    if (fields.length && colorRows.length) {
+      ry += dividerGap*0.3;
+      ctx.strokeStyle = this.rgbCss(dimTxt, 0.5); ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(rx-220, ry); ctx.lineTo(rx, ry); ctx.stroke();
+      ry += dividerGap*0.7;
+    }
+    for (const c of colorRows) {
+      const text = `${c.label}  ${c.value}`;
+      ctx.font = '23px "Cormorant Garamond", serif';
+      const tw = ctx.measureText(text).width;
+      const px0 = rx - tw - 32 - 12;
+      ctx.fillStyle = c.hex;
+      const r = 7;
+      ctx.beginPath();
+      ctx.roundRect(px0, ry+4, 32, 15, r);
+      ctx.fill();
+      ctx.fillStyle = this.rgbCss(lightTxt);
+      ctx.fillText(text, rx, ry+19);
+      ry += perEntry;
+    }
+    ctx.textAlign = 'left';
+
+    // Signature, bottom-left
+    ctx.font = '600 54px Cinzel, serif'; ctx.fillStyle = this.rgbCss(lightTxt);
+    ctx.fillText((this.frame() || 'WARFRAME').toUpperCase(), 60, H-202);
+    ctx.font = '26px "Cormorant Garamond", serif'; ctx.fillStyle = this.rgbCss(dimTxt);
+    ctx.fillText(`By ${this.creator() || 'Tenno'}`, 62, H-142);
+    ctx.font = 'italic 23px "Cormorant Garamond", serif'; ctx.fillStyle = this.rgbCss(accentLight);
+    ctx.fillText(this.name() || '', 62, H-112);
+
+    this.drawGoldFrame(ctx, W, H);
+    this.posterReady.set(true);
+    this.showToast('Poster generated!');
   }
 
   private drawBackground(ctx: CanvasRenderingContext2D, W: number, H: number) {
@@ -672,6 +1027,14 @@ export class PosterCanvas {
 
   // ── Main orchestrator ────────────────────────────────────────
   async generatePoster() {
+    // NEW ENGINE: only handles one combination so far (Classic Left +
+    // a background-removed cutout) — everything else still runs the
+    // original pipeline below, unchanged, so nothing regresses while
+    // the rest of the new engine gets built layout by layout.
+    if (this.isTransparentMode() && this.selectedLayoutKey() === 'left-classic' && this.imageDataUrl()) {
+      return this.generateClassicLeftTransparent();
+    }
+
     // Wait for fonts so the very first render doesn't fall back to
     // the system default before Cinzel finishes loading.
     await document.fonts.ready;

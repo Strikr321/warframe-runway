@@ -51,6 +51,20 @@
 .crop-dark { position: absolute; top: 0; height: 100%; background: rgba(0, 0, 0, .6); }
 .crop-line { position: absolute; top: 0; width: 1px; height: 100%; background: rgba(240, 192, 80, .5); }
 
+.mode-badge {
+  position: absolute; top: 10px; left: 10px; z-index: 5;
+  background: rgba(8,2,2,.85); border: 1px solid var(--border);
+  color: var(--text-dim); font-family: 'Raleway', sans-serif; font-size: 10.5px;
+  padding: 6px 10px; display: flex; align-items: center; gap: 6px;
+}
+.mode-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-dim); flex-shrink: 0; }
+.mode-dot.on { background: var(--gold-light); box-shadow: 0 0 6px rgba(240,192,80,.6); }
+.mode-switch {
+  background: transparent; border: none; color: var(--gold); font-size: 10px;
+  text-decoration: underline; cursor: pointer; margin-left: 4px; padding: 0;
+}
+.mode-switch:hover { color: var(--gold-light); }
+
 .img-controls {
   position: absolute; bottom: 0; left: 0; right: 0; z-index: 4;
   background: rgba(8, 2, 2, .92);

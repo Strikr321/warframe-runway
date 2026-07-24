@@ -46,6 +46,17 @@
 
       <input #fileInput type="file" accept="image/*" style="display:none" (change)="onFileChange($event)" />
 
+      @if (hasImage() && detectedTransparent() !== null) {
+        <div class="mode-badge" (click)="$event.stopPropagation()">
+          @if (isTransparentMode()) {
+            <span class="mode-dot on"></span> Cutout detected — full-bleed render
+          } @else {
+            <span class="mode-dot"></span> Photo mode — crop &amp; frame
+          }
+          <button class="mode-switch" (click)="toggleModeOverride()">switch</button>
+        </div>
+      }
+
       @if (hasImage()) {
         <div class="img-controls" #imgControls (click)="$event.stopPropagation()">
           <div class="ic-row">
