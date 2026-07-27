@@ -318,10 +318,17 @@ export class PosterCanvas {
     this.closeColorPicker();
   }
 
+  /** Which color sits at the edges vs. the glow peak — same two slots regardless of mode. */
+  bgSwapped = signal(false);
+  toggleBgSwap() {
+    this.bgSwapped.update(v => !v);
+  }
+
   /** Clears any manual color pick(s), returning to auto-detection. */
   resetBgToAuto() {
     this.posterColor1.set(null);
     this.posterColor2.set(null);
+    this.bgSwapped.set(false);
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -428,33 +435,64 @@ export class PosterCanvas {
     return [r*255, g*255, b*255];
   }
 
+  private rgbToHsv(rgb: [number,number,number]): [number, number, number] {
+    const r = rgb[0]/255, g = rgb[1]/255, b = rgb[2]/255;
+    const max = Math.max(r,g,b), min = Math.min(r,g,b), d = max-min;
+    let h = 0;
+    if (d > 0) {
+      if (max === r) h = ((g-b)/d) % 6;
+      else if (max === g) h = (b-r)/d + 2;
+      else h = (r-g)/d + 4;
+      h = h/6; if (h < 0) h += 1;
+    }
+    const s = max > 0 ? d/max : 0;
+    return [h, s, max];
+  }
+
+  /**
+   * Guarantees the glow slot reads as genuinely bright regardless of
+   * what color feeds it — a flat "mix 12% toward white" only works
+   * if the input is already fairly bright/saturated (gold, purple,
+   * red all pass through fine). It silently fails for a deliberately
+   * DARK input (the "dark neutral" landing here via the swap toggle),
+   * since 12% of near-black is still near-black. Flooring the actual
+   * HSV value/saturation fixes this for every case, not just the ones
+   * already tested — dark inputs get genuinely lifted, already-bright
+   * inputs are left alone (their value is already above the floor).
+   */
+  private richenForGlow(rgb: [number,number,number]): [number,number,number] {
+    const [h, s, v] = this.rgbToHsv(rgb);
+    return this.hsvToRgb(h, Math.max(s, 0.18), Math.max(v, 0.62));
+  }
+
   /**
    * The bell-curve atmospheric gradient + glow + vignette.
-   * Single-color mode (accentBottom omitted) behaves exactly as
-   * before. Two-color mode blends between accentTop (anchoring the
-   * top) and accentBottom (anchoring the bottom) while keeping the
-   * same non-linear glow bloom in between — this is the exact
-   * technique validated in the purple/red Harrow mockup, just now
-   * live instead of a one-off script.
+   * A genuine there-and-back flow between exactly two color slots:
+   * `edgeColor` anchors BOTH the top and bottom, `glowColor` is the
+   * bright peak in the middle — the same shape as light falling off
+   * from a source, which is what makes this read as atmosphere rather
+   * than a decorative stripe. Every mode (auto, single color, two
+   * colors) is just a different choice of what fills these two slots;
+   * there's only one flow, not six different ones.
    */
-  private drawAtmosphereBg(ctx: CanvasRenderingContext2D, W: number, H: number, accentTop: [number,number,number], accentBottom?: [number,number,number]) {
-    const bottom = accentBottom ?? accentTop;
-    const deepTop = this.mixRgb(accentTop, [5,4,8], 0.88);
-    const deepBottom = this.mixRgb(bottom, [5,4,8], 0.88);
-    const mid = this.mixRgb(this.mixRgb(accentTop, bottom, 0.5), [10,8,14], 0.55);
-    const bandCenter = 0.34, bandWidth = 0.19;
+  private drawAtmosphereBg(ctx: CanvasRenderingContext2D, W: number, H: number, edgeColor: [number,number,number], glowColor: [number,number,number]) {
+    const deepEdge = this.mixRgb(edgeColor, [8,5,6], 0.85);
+    const richGlow = this.richenForGlow(glowColor);
+    // Centered at the true vertical midpoint — a there-and-back flow
+    // that peaks off-center reads as lopsided on a bare background,
+    // even though the same math looked fine once a character was
+    // composited on top and drew the eye toward that area instead.
+    const bandCenter = 0.5, bandWidth = 0.22;
 
-    // Vertical bell-curve gradient, built from many sampled stops on a
-    // NATIVE CanvasGradient. This replaced a per-row fillRect loop —
-    // same visual math, but a real gradient is continuous by
-    // construction rather than 1750 individually-rounded 1px strips.
+    // Vertical bell-curve gradient — deepEdge at t=0 AND t=1, richGlow
+    // at the peak. Built from many sampled stops on a native
+    // CanvasGradient so it's continuous, not 1750 rounded 1px strips.
     const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
     const STOPS = 32;
     for (let i = 0; i <= STOPS; i++) {
       const t = i / STOPS;
-      const base = this.mixRgb(deepTop, deepBottom, t);
       const glow = Math.exp(-((t-bandCenter)**2)/(2*bandWidth**2));
-      bgGrad.addColorStop(t, this.rgbCss(this.mixRgb(base, mid, glow*0.85)));
+      bgGrad.addColorStop(t, this.rgbCss(this.mixRgb(deepEdge, richGlow, glow)));
     }
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, W, H);
@@ -467,22 +505,22 @@ export class PosterCanvas {
     // begin with; it's continuous math, so there's nothing to blur.
     const gcx = W*0.5, gcy = H*0.38, maxRad = 620;
     const glowGrad = ctx.createRadialGradient(gcx, gcy, 0, gcx, gcy, maxRad);
-    glowGrad.addColorStop(0,    this.rgbCss(mid, 0.22));
-    glowGrad.addColorStop(0.3,  this.rgbCss(mid, 0.17));
-    glowGrad.addColorStop(0.6,  this.rgbCss(mid, 0.09));
-    glowGrad.addColorStop(1,    this.rgbCss(mid, 0));
+    glowGrad.addColorStop(0,    this.rgbCss(richGlow, 0.22));
+    glowGrad.addColorStop(0.3,  this.rgbCss(richGlow, 0.17));
+    glowGrad.addColorStop(0.6,  this.rgbCss(richGlow, 0.09));
+    glowGrad.addColorStop(1,    this.rgbCss(richGlow, 0));
     ctx.fillStyle = glowGrad;
     ctx.fillRect(0, 0, W, H);
 
     // Vignette — same approach: a radial gradient, transparent center,
     // darkening toward the far corners, rather than a blurred rectangle.
     const vigGrad = ctx.createRadialGradient(W/2, H*0.45, H*0.35, W/2, H*0.45, H*0.85);
-    vigGrad.addColorStop(0, this.rgbCss(deepTop, 0));
-    vigGrad.addColorStop(1, this.rgbCss(deepTop, 0.65));
+    vigGrad.addColorStop(0, this.rgbCss(deepEdge, 0));
+    vigGrad.addColorStop(1, this.rgbCss(deepEdge, 0.65));
     ctx.fillStyle = vigGrad;
     ctx.fillRect(0, 0, W, H);
 
-    return deepTop;
+    return deepEdge;
   }
 
   private drawGoldFrame(ctx: CanvasRenderingContext2D, W: number, H: number) {
@@ -538,16 +576,29 @@ export class PosterCanvas {
     const bounds = this.trimTransparentBounds(fullData);
     const autoAccent = this.dominantHueColor(fullData);
 
-    // Background color: Auto (nothing picked) / one color (replaces
-    // the detected accent) / two colors (a real top-to-bottom blend).
-    // This is the ONE place this decision gets made — every layout
-    // inherits it automatically, nothing to wire up per-layout.
+    // Background color has exactly two slots — edge (both top and
+    // bottom) and glow (the bright peak) — regardless of mode:
+    //   Auto:        edge = dark neutral,  glow = auto-detected
+    //   One color:   edge = dark neutral,  glow = your color
+    //   Two colors:  edge = color1,        glow = color2
+    // `bgSwapped` flips which value lands in which slot — one toggle
+    // covers every mode, since it's the same two slots either way.
+    const DARK_NEUTRAL: [number,number,number] = [12, 6, 8];
     const c1 = this.posterColor1();
     const c2 = this.posterColor2();
-    const accent: [number,number,number] = c1 ? this.hexToRgb(c1.hex) : autoAccent;
-    const accentBottom: [number,number,number] | undefined = c2 ? this.hexToRgb(c2.hex) : undefined;
 
-    const deep = this.drawAtmosphereBg(ctx, W, H, accent, accentBottom);
+    let edgeSlot: [number,number,number], glowSlot: [number,number,number];
+    if (c1 && c2) {
+      edgeSlot = this.hexToRgb(c1.hex); glowSlot = this.hexToRgb(c2.hex);
+    } else if (c1) {
+      edgeSlot = DARK_NEUTRAL; glowSlot = this.hexToRgb(c1.hex);
+    } else {
+      edgeSlot = DARK_NEUTRAL; glowSlot = autoAccent;
+    }
+    if (this.bgSwapped()) { const tmp = edgeSlot; edgeSlot = glowSlot; glowSlot = tmp; }
+    const accent = glowSlot; // the "accent" used elsewhere (text tinting etc.) follows whatever's glowing
+
+    const deep = this.drawAtmosphereBg(ctx, W, H, edgeSlot, glowSlot);
     return { ctx, W, H, rawImg, bounds, accent, deep };
   }
 

@@ -96,9 +96,14 @@
           </div>
         </div>
       </div>
-      @if (posterColor1() || posterColor2()) {
-        <button class="bg-reset" (click)="resetBgToAuto()">Reset to Auto</button>
-      }
+      <div class="bg-actions">
+        <button class="bg-swap" (click)="toggleBgSwap()" title="Swap which color glows vs. sits at the edges">
+          &#8646; Swap
+        </button>
+        @if (posterColor1() || posterColor2()) {
+          <button class="bg-reset" (click)="resetBgToAuto()">Reset to Auto</button>
+        }
+      </div>
     </div>
 
     <!-- Layout picker -->
