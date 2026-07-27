@@ -88,7 +88,6 @@ export class PosterCanvas {
 
   posterColor1 = signal<PosterColor | null>(null);
   posterColor2 = signal<PosterColor | null>(null);
-  gradientAngle = signal(180);
 
   colorPickerTarget = signal<1 | 2 | null>(null); // which swatch opened the modal
   pickerPaletteName = signal('Tenno');
@@ -319,8 +318,10 @@ export class PosterCanvas {
     this.closeColorPicker();
   }
 
-  onGradientAngleChange(e: Event) {
-    this.gradientAngle.set(parseInt((e.target as HTMLInputElement).value, 10));
+  /** Clears any manual color pick(s), returning to auto-detection. */
+  resetBgToAuto() {
+    this.posterColor1.set(null);
+    this.posterColor2.set(null);
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -427,10 +428,20 @@ export class PosterCanvas {
     return [r*255, g*255, b*255];
   }
 
-  /** The bell-curve atmospheric gradient + glow + vignette, same as the approved mockups. */
-  private drawAtmosphereBg(ctx: CanvasRenderingContext2D, W: number, H: number, accent: [number,number,number]) {
-    const deep = this.mixRgb(accent, [5,4,8], 0.88);
-    const mid = this.mixRgb(accent, [10,8,14], 0.55);
+  /**
+   * The bell-curve atmospheric gradient + glow + vignette.
+   * Single-color mode (accentBottom omitted) behaves exactly as
+   * before. Two-color mode blends between accentTop (anchoring the
+   * top) and accentBottom (anchoring the bottom) while keeping the
+   * same non-linear glow bloom in between — this is the exact
+   * technique validated in the purple/red Harrow mockup, just now
+   * live instead of a one-off script.
+   */
+  private drawAtmosphereBg(ctx: CanvasRenderingContext2D, W: number, H: number, accentTop: [number,number,number], accentBottom?: [number,number,number]) {
+    const bottom = accentBottom ?? accentTop;
+    const deepTop = this.mixRgb(accentTop, [5,4,8], 0.88);
+    const deepBottom = this.mixRgb(bottom, [5,4,8], 0.88);
+    const mid = this.mixRgb(this.mixRgb(accentTop, bottom, 0.5), [10,8,14], 0.55);
     const bandCenter = 0.34, bandWidth = 0.19;
 
     // Vertical bell-curve gradient, built from many sampled stops on a
@@ -441,8 +452,9 @@ export class PosterCanvas {
     const STOPS = 32;
     for (let i = 0; i <= STOPS; i++) {
       const t = i / STOPS;
+      const base = this.mixRgb(deepTop, deepBottom, t);
       const glow = Math.exp(-((t-bandCenter)**2)/(2*bandWidth**2));
-      bgGrad.addColorStop(t, this.rgbCss(this.mixRgb(deep, mid, glow)));
+      bgGrad.addColorStop(t, this.rgbCss(this.mixRgb(base, mid, glow*0.85)));
     }
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, W, H);
@@ -455,22 +467,22 @@ export class PosterCanvas {
     // begin with; it's continuous math, so there's nothing to blur.
     const gcx = W*0.5, gcy = H*0.38, maxRad = 620;
     const glowGrad = ctx.createRadialGradient(gcx, gcy, 0, gcx, gcy, maxRad);
-    glowGrad.addColorStop(0,    this.rgbCss(accent, 0.22));
-    glowGrad.addColorStop(0.3,  this.rgbCss(accent, 0.17));
-    glowGrad.addColorStop(0.6,  this.rgbCss(accent, 0.09));
-    glowGrad.addColorStop(1,    this.rgbCss(accent, 0));
+    glowGrad.addColorStop(0,    this.rgbCss(mid, 0.22));
+    glowGrad.addColorStop(0.3,  this.rgbCss(mid, 0.17));
+    glowGrad.addColorStop(0.6,  this.rgbCss(mid, 0.09));
+    glowGrad.addColorStop(1,    this.rgbCss(mid, 0));
     ctx.fillStyle = glowGrad;
     ctx.fillRect(0, 0, W, H);
 
     // Vignette — same approach: a radial gradient, transparent center,
     // darkening toward the far corners, rather than a blurred rectangle.
     const vigGrad = ctx.createRadialGradient(W/2, H*0.45, H*0.35, W/2, H*0.45, H*0.85);
-    vigGrad.addColorStop(0, this.rgbCss(deep, 0));
-    vigGrad.addColorStop(1, this.rgbCss(deep, 0.65));
+    vigGrad.addColorStop(0, this.rgbCss(deepTop, 0));
+    vigGrad.addColorStop(1, this.rgbCss(deepTop, 0.65));
     ctx.fillStyle = vigGrad;
     ctx.fillRect(0, 0, W, H);
 
-    return deep;
+    return deepTop;
   }
 
   private drawGoldFrame(ctx: CanvasRenderingContext2D, W: number, H: number) {
@@ -500,13 +512,16 @@ export class PosterCanvas {
   }
 
   /**
-   * LAYOUT: Classic Left, transparent mode.
-   * Full-bleed character (no mask, no rectangle — the alpha channel
-   * IS the silhouette), atmospheric background sampled from the
-   * character's own colors, a single right-side text column sized to
-   * the real number of filled-in fields, gold outer frame.
+   * Shared setup for every transparent-mode layout: loads the image,
+   * reads its pixel data once, trims the silhouette bounds, extracts
+   * the accent color, and paints the atmosphere background. Every
+   * layout starts from exactly this same state.
    */
-  private async generateClassicLeftTransparent() {
+  private async setupTransparentCanvas(): Promise<{
+    ctx: CanvasRenderingContext2D; W: number; H: number; rawImg: HTMLImageElement;
+    bounds: { x: number; y: number; w: number; h: number };
+    accent: [number, number, number]; deep: [number, number, number];
+  }> {
     await document.fonts.ready;
     const cv = this.canvasRef.nativeElement;
     const ctx = cv.getContext('2d')!;
@@ -514,7 +529,6 @@ export class PosterCanvas {
     cv.width = W; cv.height = H;
 
     const rawImg = await this.loadImgEl(this.imageDataUrl()!);
-    // Read full-resolution pixel data once — used for both trimming and color extraction
     const scanCv = document.createElement('canvas');
     scanCv.width = rawImg.naturalWidth; scanCv.height = rawImg.naturalHeight;
     const scanCtx = scanCv.getContext('2d', { willReadFrequently: true })!;
@@ -522,65 +536,38 @@ export class PosterCanvas {
     const fullData = scanCtx.getImageData(0, 0, scanCv.width, scanCv.height);
 
     const bounds = this.trimTransparentBounds(fullData);
-    const accent = this.dominantHueColor(fullData);
-    const deep = this.drawAtmosphereBg(ctx, W, H, accent);
+    const autoAccent = this.dominantHueColor(fullData);
 
-    // Header layout is computed from REAL measured text metrics, not a
-    // guessed baseline — this is exactly the bug that put "WARFRAME"
-    // overlapping the frame's border: a hardcoded y=62 assumed a
-    // certain cap-height that didn't match what actually rendered.
-    // Measuring first means this can never drift out of sync with
-    // whatever font/weight actually gets used.
+    // Background color: Auto (nothing picked) / one color (replaces
+    // the detected accent) / two colors (a real top-to-bottom blend).
+    // This is the ONE place this decision gets made — every layout
+    // inherits it automatically, nothing to wire up per-layout.
+    const c1 = this.posterColor1();
+    const c2 = this.posterColor2();
+    const accent: [number,number,number] = c1 ? this.hexToRgb(c1.hex) : autoAccent;
+    const accentBottom: [number,number,number] | undefined = c2 ? this.hexToRgb(c2.hex) : undefined;
+
+    const deep = this.drawAtmosphereBg(ctx, W, H, accent, accentBottom);
+    return { ctx, W, H, rawImg, bounds, accent, deep };
+  }
+
+  /**
+   * Header title/subtitle/divider, positioned from REAL measured text
+   * metrics rather than a guessed baseline — this is the exact bug
+   * that once put "WARFRAME" overlapping the frame border. One
+   * implementation used by every layout means that bug can only ever
+   * need fixing once, not four times.
+   */
+  private drawComputedHeader(ctx: CanvasRenderingContext2D, W: number, lightTxt: [number,number,number], accentLight: [number,number,number]): number {
     const FRAME_INNER = 32, TITLE_TOP_MARGIN = 20;
+    ctx.textAlign = 'left';
     ctx.font = '600 58px Cinzel, serif';
     const titleAscent = ctx.measureText('WARFRAME').actualBoundingBoxAscent || 42;
     const titleBaseline = FRAME_INNER + TITLE_TOP_MARGIN + titleAscent;
     const subBaseline = titleBaseline + 66;
     const dividerY = subBaseline + 20;
 
-    const HEADER_BOTTOM = dividerY, SIG_TOP_MARGIN = 220;
-    const FRAME_SAFE_MARGIN = 68; // keeps clear of the gold frame's inner border on the sides
-    const TOP_CLEARANCE = 90;     // keeps clear of the header divider — was 24, too thin to read as real breathing room at actual size
-    const BOTTOM_MARGIN = Math.round(H*0.058);
-
-    // Fit the character within BOTH a max height and a max width —
-    // scaling by height alone (the old approach) let any character
-    // whose silhouette is proportionally WIDE (wide horns, spread
-    // shoulder guards) push past the frame's sides, since nothing was
-    // ever checking width. This is the same "contain" logic as
-    // object-fit: contain — take whichever of the two scale factors
-    // is smaller, so neither dimension can ever overflow.
-    const maxH = (H - BOTTOM_MARGIN) - (HEADER_BOTTOM + TOP_CLEARANCE);
-    const maxW = W - FRAME_SAFE_MARGIN * 2;
-    const scaleByHeight = maxH / bounds.h;
-    const scaleByWidth = maxW / bounds.w;
-    const scale = Math.min(scaleByHeight, scaleByWidth);
-
-    const targetH = Math.round(bounds.h * scale);
-    const targetW = Math.round(bounds.w * scale);
-    const cx = Math.round((W - targetW)/2);
-    const cy = H - targetH - BOTTOM_MARGIN;
-
-    // Soft contact shadow at the feet
-    ctx.save();
-    ctx.filter = 'blur(22px)';
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
-    ctx.beginPath();
-    ctx.ellipse(cx+targetW*0.5, cy+targetH*0.995, targetW*0.38, targetH*0.03, 0, 0, Math.PI*2);
-    ctx.fill();
-    ctx.restore();
-
-    // Draw the TRIMMED region of the source image, scaled — this is
-    // the whole reason full-bleed works: we draw exactly the alpha
-    // silhouette, no mask shape imposed on top of it.
-    ctx.drawImage(rawImg, bounds.x, bounds.y, bounds.w, bounds.h, cx, cy, targetW, targetH);
-
-    const lightTxt: [number,number,number] = [232,226,214];
-    const dimTxt = this.mixRgb(lightTxt, deep, 0.45);
-    const accentLight = this.mixRgb(accent, [255,255,255], 0.45);
-
     ctx.textBaseline = 'alphabetic';
-    ctx.font = '600 58px Cinzel, serif';
     ctx.fillStyle = this.rgbCss(lightTxt);
     this.drawTrackedText(ctx, 'WARFRAME', W/2, titleBaseline, 6);
     ctx.font = '16px Cinzel, serif';
@@ -588,59 +575,270 @@ export class PosterCanvas {
     this.drawTrackedText(ctx, 'FASHION CARD', W/2, subBaseline, 10);
     ctx.strokeStyle = this.rgbCss(accentLight, 0.55); ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(W*0.34, dividerY); ctx.lineTo(W*0.66, dividerY); ctx.stroke();
+    return dividerY;
+  }
 
-    // Text column — spacing computed from the REAL number of filled
-    // fields, not a fixed guess, so it fills the available band
-    // whether someone's set 2 fields or all 16.
+  /** "Contain" fit — same guarantee regardless of a character's proportions: never overflow EITHER dimension. */
+  private fitContain(bounds: {w:number;h:number}, maxH: number, maxW: number): { targetW: number; targetH: number } {
+    const scale = Math.min(maxH / bounds.h, maxW / bounds.w);
+    return { targetW: Math.round(bounds.w * scale), targetH: Math.round(bounds.h * scale) };
+  }
+
+  private drawContactShadow(ctx: CanvasRenderingContext2D, cx: number, cy: number, targetW: number, targetH: number) {
+    ctx.save();
+    ctx.filter = 'blur(22px)';
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.beginPath();
+    ctx.ellipse(cx+targetW*0.5, cy+targetH*0.995, targetW*0.38, targetH*0.03, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  private getFieldsAndColors() {
     const att = this.attachments();
     const fields = LOADOUT_FIELDS.map(f => ({ label: f.label.toUpperCase(), value: att[f.key]?.trim() || '—' }));
     const state = this.colorState();
     const colorRows = CHANNELS.map(ch => ({ label: ch.name.toUpperCase(), value: state[ch.key].label || '—', hex: state[ch.key].hex }));
+    return { fields, colorRows };
+  }
 
-    const textTop = HEADER_BOTTOM + 40;
-    const textBottom = H - SIG_TOP_MARGIN;
-    const totalEntries = fields.length + colorRows.length;
+  /**
+   * Draws one column of attachment/color rows, spaced to exactly fill
+   * [topY, bottomY] regardless of how many entries it holds — this is
+   * what makes a single 16-entry column (Classic Left/Right) and a
+   * split pair of 8-entry columns (Split) both look intentional
+   * instead of one being sparse or one being cramped.
+   */
+  private drawTextColumn(
+    ctx: CanvasRenderingContext2D,
+    opts: {
+      x: number; align: 'left' | 'right'; topY: number; bottomY: number;
+      fields: { label: string; value: string }[];
+      colors: { label: string; value: string; hex: string }[];
+      lightTxt: [number,number,number]; dimTxt: [number,number,number]; accentLight: [number,number,number];
+      labelSize?: number; valueSize?: number; pillSize?: number;
+    },
+  ) {
+    const labelSize = opts.labelSize ?? 15, valueSize = opts.valueSize ?? 27, pillSize = opts.pillSize ?? 23;
     const dividerGap = 40;
-    const perEntry = totalEntries > 0 ? (textBottom - textTop - dividerGap) / totalEntries : 0;
+    const hasBoth = opts.fields.length > 0 && opts.colors.length > 0;
+    const total = opts.fields.length + opts.colors.length;
+    const perEntry = total > 0 ? (opts.bottomY - opts.topY - (hasBoth ? dividerGap : 0)) / total : 0;
+    const { x, align } = opts;
 
-    const rx = W - 60; let ry = textTop;
-    ctx.textAlign = 'right';
-    for (const f of fields) {
-      ctx.font = '15px Cinzel, serif'; ctx.fillStyle = this.rgbCss(accentLight);
-      ctx.fillText(f.label, rx, ry);
-      ctx.font = '27px "Cormorant Garamond", serif'; ctx.fillStyle = this.rgbCss(lightTxt);
-      ctx.fillText(f.value, rx, ry+29);
-      ry += perEntry;
+    ctx.textAlign = align;
+    let y = opts.topY;
+    for (const f of opts.fields) {
+      ctx.font = `${labelSize}px Cinzel, serif`; ctx.fillStyle = this.rgbCss(opts.accentLight);
+      ctx.fillText(f.label, x, y);
+      ctx.font = `${valueSize}px "Cormorant Garamond", serif`; ctx.fillStyle = this.rgbCss(opts.lightTxt);
+      ctx.fillText(f.value, x, y+29);
+      y += perEntry;
     }
-    if (fields.length && colorRows.length) {
-      ry += dividerGap*0.3;
-      ctx.strokeStyle = this.rgbCss(dimTxt, 0.5); ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(rx-220, ry); ctx.lineTo(rx, ry); ctx.stroke();
-      ry += dividerGap*0.7;
-    }
-    for (const c of colorRows) {
-      const text = `${c.label}  ${c.value}`;
-      ctx.font = '23px "Cormorant Garamond", serif';
-      const tw = ctx.measureText(text).width;
-      const px0 = rx - tw - 32 - 12;
-      ctx.fillStyle = c.hex;
-      const r = 7;
+    if (hasBoth) {
+      y += dividerGap*0.3;
+      ctx.strokeStyle = this.rgbCss(opts.dimTxt, 0.5); ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.roundRect(px0, ry+4, 32, 15, r);
-      ctx.fill();
-      ctx.fillStyle = this.rgbCss(lightTxt);
-      ctx.fillText(text, rx, ry+19);
-      ry += perEntry;
+      if (align === 'right') { ctx.moveTo(x-220, y); ctx.lineTo(x, y); }
+      else { ctx.moveTo(x, y); ctx.lineTo(x+220, y); }
+      ctx.stroke();
+      y += dividerGap*0.7;
+    }
+    for (const c of opts.colors) {
+      const text = `${c.label}  ${c.value}`;
+      ctx.font = `${pillSize}px "Cormorant Garamond", serif`;
+      const tw = ctx.measureText(text).width;
+      ctx.fillStyle = c.hex;
+      if (align === 'right') {
+        const pillX = x - tw - 44;
+        ctx.beginPath(); ctx.roundRect(pillX, y+4, 32, 15, 7); ctx.fill();
+        ctx.fillStyle = this.rgbCss(opts.lightTxt); ctx.textAlign = 'right';
+        ctx.fillText(text, x, y+19);
+      } else {
+        ctx.beginPath(); ctx.roundRect(x, y+4, 32, 15, 7); ctx.fill();
+        ctx.fillStyle = this.rgbCss(opts.lightTxt); ctx.textAlign = 'left';
+        ctx.fillText(text, x+44, y+19);
+      }
+      y += perEntry;
     }
     ctx.textAlign = 'left';
+  }
 
-    // Signature, bottom-left
+  private drawSignature(
+    ctx: CanvasRenderingContext2D, x: number, y: number, align: 'left' | 'center',
+    lightTxt: [number,number,number], dimTxt: [number,number,number], accentLight: [number,number,number],
+  ) {
+    ctx.textAlign = align === 'center' ? 'center' : 'left';
     ctx.font = '600 54px Cinzel, serif'; ctx.fillStyle = this.rgbCss(lightTxt);
-    ctx.fillText((this.frame() || 'WARFRAME').toUpperCase(), 60, H-202);
+    ctx.fillText((this.frame() || 'WARFRAME').toUpperCase(), x, y);
     ctx.font = '26px "Cormorant Garamond", serif'; ctx.fillStyle = this.rgbCss(dimTxt);
-    ctx.fillText(`By ${this.creator() || 'Tenno'}`, 62, H-142);
+    ctx.fillText(`By ${this.creator() || 'Tenno'}`, x, y+60);
     ctx.font = 'italic 23px "Cormorant Garamond", serif'; ctx.fillStyle = this.rgbCss(accentLight);
-    ctx.fillText(this.name() || '', 62, H-112);
+    ctx.fillText(this.name() || '', x, y+87);
+    ctx.textAlign = 'left';
+  }
+
+  /**
+   * LAYOUT: Classic Left, transparent mode.
+   * Full-bleed character (no mask, no rectangle — the alpha channel
+   * IS the silhouette), atmospheric background sampled from the
+   * character's own colors, a single right-side text column sized to
+   * the real number of filled-in fields, gold outer frame.
+   */
+  private async generateClassicLeftTransparent() {
+    const { ctx, W, H, rawImg, bounds, accent, deep } = await this.setupTransparentCanvas();
+    const lightTxt: [number,number,number] = [232,226,214];
+    const dimTxt = this.mixRgb(lightTxt, deep, 0.45);
+    const accentLight = this.mixRgb(accent, [255,255,255], 0.45);
+
+    const HEADER_BOTTOM = this.drawComputedHeader(ctx, W, lightTxt, accentLight);
+    const SIG_TOP_MARGIN = 220, FRAME_SAFE_MARGIN = 68, TOP_CLEARANCE = 90;
+    const BOTTOM_MARGIN = Math.round(H*0.058);
+
+    const maxH = (H - BOTTOM_MARGIN) - (HEADER_BOTTOM + TOP_CLEARANCE);
+    const maxW = W - FRAME_SAFE_MARGIN * 2;
+    const { targetW, targetH } = this.fitContain(bounds, maxH, maxW);
+    const cx = Math.round((W - targetW)/2);
+    const cy = H - targetH - BOTTOM_MARGIN;
+
+    this.drawContactShadow(ctx, cx, cy, targetW, targetH);
+    ctx.drawImage(rawImg, bounds.x, bounds.y, bounds.w, bounds.h, cx, cy, targetW, targetH);
+
+    const { fields, colorRows } = this.getFieldsAndColors();
+    this.drawTextColumn(ctx, {
+      x: W-60, align: 'right', topY: HEADER_BOTTOM+40, bottomY: H-SIG_TOP_MARGIN,
+      fields, colors: colorRows, lightTxt, dimTxt, accentLight,
+    });
+    this.drawSignature(ctx, 60, H-202, 'left', lightTxt, dimTxt, accentLight);
+
+    this.drawGoldFrame(ctx, W, H);
+    this.posterReady.set(true);
+    this.showToast('Poster generated!');
+  }
+
+  /** LAYOUT: Classic Right — mirror of Classic Left; text column moves to the left, character stays centered. */
+  private async generateClassicRightTransparent() {
+    const { ctx, W, H, rawImg, bounds, accent, deep } = await this.setupTransparentCanvas();
+    const lightTxt: [number,number,number] = [232,226,214];
+    const dimTxt = this.mixRgb(lightTxt, deep, 0.45);
+    const accentLight = this.mixRgb(accent, [255,255,255], 0.45);
+
+    const HEADER_BOTTOM = this.drawComputedHeader(ctx, W, lightTxt, accentLight);
+    const SIG_TOP_MARGIN = 220, FRAME_SAFE_MARGIN = 68, TOP_CLEARANCE = 90;
+    const BOTTOM_MARGIN = Math.round(H*0.058);
+
+    const maxH = (H - BOTTOM_MARGIN) - (HEADER_BOTTOM + TOP_CLEARANCE);
+    const maxW = W - FRAME_SAFE_MARGIN * 2;
+    const { targetW, targetH } = this.fitContain(bounds, maxH, maxW);
+    const cx = Math.round((W - targetW)/2);
+    const cy = H - targetH - BOTTOM_MARGIN;
+
+    this.drawContactShadow(ctx, cx, cy, targetW, targetH);
+    ctx.drawImage(rawImg, bounds.x, bounds.y, bounds.w, bounds.h, cx, cy, targetW, targetH);
+
+    const { fields, colorRows } = this.getFieldsAndColors();
+    this.drawTextColumn(ctx, {
+      x: 60, align: 'left', topY: HEADER_BOTTOM+40, bottomY: H-SIG_TOP_MARGIN,
+      fields, colors: colorRows, lightTxt, dimTxt, accentLight,
+    });
+    this.drawSignature(ctx, 60, H-202, 'left', lightTxt, dimTxt, accentLight);
+
+    this.drawGoldFrame(ctx, W, H);
+    this.posterReady.set(true);
+    this.showToast('Poster generated!');
+  }
+
+  /** LAYOUT: Split — character centered, attachments left column, colors right column. */
+  private async generateSplitTransparent() {
+    const { ctx, W, H, rawImg, bounds, accent, deep } = await this.setupTransparentCanvas();
+    const lightTxt: [number,number,number] = [232,226,214];
+    const dimTxt = this.mixRgb(lightTxt, deep, 0.45);
+    const accentLight = this.mixRgb(accent, [255,255,255], 0.45);
+
+    const HEADER_BOTTOM = this.drawComputedHeader(ctx, W, lightTxt, accentLight);
+    const FRAME_SAFE_MARGIN = 68, TOP_CLEARANCE = 90;
+    // Reserves gap + the signature block's real span + a bottom safe
+    // margin — not a separate guessed constant that could silently
+    // disagree with where the character actually ends up.
+    const BOTTOM_MARGIN = 185;
+
+    const maxH = (H - BOTTOM_MARGIN) - (HEADER_BOTTOM + TOP_CLEARANCE);
+    const maxW = W - FRAME_SAFE_MARGIN * 2;
+    const { targetW, targetH } = this.fitContain(bounds, maxH, maxW);
+    const cx = Math.round((W - targetW)/2);
+    const cy = H - targetH - BOTTOM_MARGIN;
+    const charBottom = cy + targetH;
+
+    this.drawContactShadow(ctx, cx, cy, targetW, targetH);
+    ctx.drawImage(rawImg, bounds.x, bounds.y, bounds.w, bounds.h, cx, cy, targetW, targetH);
+
+    // Each side only carries 8 entries instead of 16 shared — spacing
+    // naturally comes out more generous, matching the approved mockup.
+    const { fields, colorRows } = this.getFieldsAndColors();
+    const textTop = HEADER_BOTTOM + 40, textBottom = charBottom - 20;
+    this.drawTextColumn(ctx, { x: 60, align: 'left', topY: textTop, bottomY: textBottom, fields, colors: [], lightTxt, dimTxt, accentLight });
+    this.drawTextColumn(ctx, { x: W-60, align: 'right', topY: textTop, bottomY: textBottom, fields: [], colors: colorRows, lightTxt, dimTxt, accentLight });
+
+    // Derived from the character's REAL bottom edge (25px gap + the
+    // ~40px ascent to the name's baseline), not a fixed H-offset that
+    // could end up touching the character depending on how tall it
+    // scaled — this is exactly the bug that let this touch at 0px
+    // clearance before.
+    const sigY = charBottom + 25 + 40;
+    this.drawSignature(ctx, W/2, sigY, 'center', lightTxt, dimTxt, accentLight);
+
+    this.drawGoldFrame(ctx, W, H);
+    this.posterReady.set(true);
+    this.showToast('Poster generated!');
+  }
+
+  /** LAYOUT: Showcase — dominant character, signature bottom-left, two-column band across the very bottom. */
+  private async generateShowcaseTransparent() {
+    const { ctx, W, H, rawImg, bounds, accent, deep } = await this.setupTransparentCanvas();
+    const lightTxt: [number,number,number] = [232,226,214];
+    const dimTxt = this.mixRgb(lightTxt, deep, 0.45);
+    const accentLight = this.mixRgb(accent, [255,255,255], 0.45);
+
+    const HEADER_BOTTOM = this.drawComputedHeader(ctx, W, lightTxt, accentLight);
+    // TOP_CLEARANCE matches the value used everywhere else (90, not a
+    // smaller "should be fine here" guess) — the character is
+    // top-anchored and large here too, so the same "24px reads as
+    // touching" lesson from Classic Left applies exactly the same way.
+    const FRAME_SAFE_MARGIN = 68, TOP_CLEARANCE = 90;
+    // SIG_H sized to the signature block's REAL measured extent (name
+    // ascent ~40 + 87 to the loadout baseline + ~6 descent = ~133px)
+    // plus real margin on both sides — the previous 148 was 5px too
+    // tight against the band divider below it, caught by rendering
+    // and checking the actual numbers rather than trusting a guess.
+    const SIG_H = 175, BAND_H = Math.round(H*0.27);
+    const reservedBottom = SIG_H + BAND_H;
+
+    const maxH = H - reservedBottom - (HEADER_BOTTOM + TOP_CLEARANCE);
+    const maxW = W - FRAME_SAFE_MARGIN * 2;
+    const { targetW, targetH } = this.fitContain(bounds, maxH, maxW);
+    const cx = Math.round((W - targetW)/2);
+    const cy = HEADER_BOTTOM + TOP_CLEARANCE;
+
+    this.drawContactShadow(ctx, cx, cy, targetW, targetH);
+    ctx.drawImage(rawImg, bounds.x, bounds.y, bounds.w, bounds.h, cx, cy, targetW, targetH);
+
+    const sigY = (H - reservedBottom) + 55;
+    this.drawSignature(ctx, 68, sigY, 'left', lightTxt, dimTxt, accentLight);
+
+    const bandTop = H - BAND_H;
+    ctx.strokeStyle = this.rgbCss(dimTxt, 0.5); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(60, bandTop-6); ctx.lineTo(W-60, bandTop-6); ctx.stroke();
+
+    const { fields, colorRows } = this.getFieldsAndColors();
+    const bandBottom = H - 30;
+    this.drawTextColumn(ctx, {
+      x: 60, align: 'left', topY: bandTop+16, bottomY: bandBottom, fields, colors: [], lightTxt, dimTxt, accentLight,
+      labelSize: 13, valueSize: 21, pillSize: 19,
+    });
+    this.drawTextColumn(ctx, {
+      x: W/2+30, align: 'left', topY: bandTop+16, bottomY: bandBottom, fields: [], colors: colorRows, lightTxt, dimTxt, accentLight,
+      labelSize: 13, valueSize: 21, pillSize: 19,
+    });
 
     this.drawGoldFrame(ctx, W, H);
     this.posterReady.set(true);
@@ -651,7 +849,7 @@ export class PosterCanvas {
     const c1 = this.posterColor1()?.hex ?? '#3a0808';
     const c2 = this.posterColor2()?.hex ?? '#080202';
 
-    const angle = (this.gradientAngle() ?? 180) * Math.PI / 180;
+    const angle = 180 * Math.PI / 180; // fixed - the angle slider was removed; this old function is superseded by drawAtmosphereBg anyway
     const mx = W / 2, my = H / 2;
     const len = Math.max(W, H);
     const x1 = mx - Math.sin(angle) * len / 2;
@@ -1027,12 +1225,17 @@ export class PosterCanvas {
 
   // ── Main orchestrator ────────────────────────────────────────
   async generatePoster() {
-    // NEW ENGINE: only handles one combination so far (Classic Left +
-    // a background-removed cutout) — everything else still runs the
-    // original pipeline below, unchanged, so nothing regresses while
-    // the rest of the new engine gets built layout by layout.
-    if (this.isTransparentMode() && this.selectedLayoutKey() === 'left-classic' && this.imageDataUrl()) {
-      return this.generateClassicLeftTransparent();
+    // NEW ENGINE: all 4 layouts now handle transparent-mode (a
+    // background-removed cutout). Non-transparent mode (a raw
+    // screenshot) still runs the original pipeline below, unchanged,
+    // for all 4 — that's the next piece of work, not this one.
+    if (this.isTransparentMode() && this.imageDataUrl()) {
+      switch (this.selectedLayoutKey()) {
+        case 'left-classic':  return this.generateClassicLeftTransparent();
+        case 'right-classic': return this.generateClassicRightTransparent();
+        case 'center-split':  return this.generateSplitTransparent();
+        case 'center-showcase': return this.generateShowcaseTransparent();
+      }
     }
 
     // Wait for fonts so the very first render doesn't fall back to

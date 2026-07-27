@@ -72,18 +72,6 @@
                    (input)="imgCrop.set($any($event.target).valueAsNumber); onSliderChange()" />
             <span class="ic-value">{{ imgCrop() }}%</span>
           </div>
-          <div class="ic-row">
-            <span class="ic-label">Pan X</span>
-            <input type="range" class="ic-slider" min="-500" max="500" step="1" [value]="imgPanX()"
-                   (input)="imgPanX.set($any($event.target).valueAsNumber); onSliderChange()" />
-            <span class="ic-value">{{ imgPanX() }}</span>
-          </div>
-          <div class="ic-row">
-            <span class="ic-label">Pan Y</span>
-            <input type="range" class="ic-slider" min="-500" max="500" step="1" [value]="imgPanY()"
-                   (input)="imgPanY.set($any($event.target).valueAsNumber); onSliderChange()" />
-            <span class="ic-value">{{ imgPanY() }}</span>
-          </div>
         </div>
       }
     </div>
@@ -91,27 +79,26 @@
     <!-- Poster background colors -->
     <div class="panel bg-panel">
       <div class="section-label" style="margin-bottom:10px">Poster Background</div>
+      <p class="bg-hint">Auto-detects colors from your image. Pick one to override it, or two for a custom top-to-bottom blend.</p>
       <div class="poster-colors-row">
         <div class="poster-color-col">
           <div class="poster-color-label">Color 1 (Top)</div>
           <div class="poster-color-swatch" (click)="openColorPicker(1)">
             <div class="swatch-fill" [style.background]="posterColor1()?.hex ?? '#3a0808'"></div>
-            <span class="swatch-label">{{ posterColor1()?.label ?? '— Select —' }}</span>
+            <span class="swatch-label">{{ posterColor1()?.label ?? '— Auto —' }}</span>
           </div>
         </div>
         <div class="poster-color-col">
           <div class="poster-color-label">Color 2 (Bottom)</div>
           <div class="poster-color-swatch" (click)="openColorPicker(2)">
             <div class="swatch-fill" [style.background]="posterColor2()?.hex ?? '#080202'"></div>
-            <span class="swatch-label">{{ posterColor2()?.label ?? '— Select —' }}</span>
+            <span class="swatch-label">{{ posterColor2()?.label ?? '— Auto —' }}</span>
           </div>
         </div>
       </div>
-      <div class="gradient-control">
-        <span class="ic-label">Angle</span>
-        <input type="range" class="ic-slider" min="0" max="360" step="1" [value]="gradientAngle()" (input)="onGradientAngleChange($event)" />
-        <span class="ic-value">{{ gradientAngle() }}&deg;</span>
-      </div>
+      @if (posterColor1() || posterColor2()) {
+        <button class="bg-reset" (click)="resetBgToAuto()">Reset to Auto</button>
+      }
     </div>
 
     <!-- Layout picker -->

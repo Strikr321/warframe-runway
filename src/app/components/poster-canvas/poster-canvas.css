@@ -100,8 +100,14 @@
 .swatch-fill { position: absolute; inset: 0; }
 .swatch-label { position: relative; z-index: 1; text-shadow: 0 0 4px rgba(0, 0, 0, .8); font-size: 8px; }
 
-.gradient-control { margin-top: 10px; display: flex; align-items: center; gap: 10px; }
-.gradient-control .ic-label { width: 70px; }
+.bg-hint { font-size: 10.5px; color: var(--text-dim); font-style: italic; margin: 4px 0 8px; line-height: 1.4; }
+.bg-reset {
+  margin-top: 10px; width: 100%;
+  background: transparent; border: 1px solid var(--border-dim); color: var(--text-dim);
+  font-family: 'Cinzel', serif; font-size: 9px; letter-spacing: .12em; text-transform: uppercase;
+  padding: 7px; cursor: pointer; transition: all .2s;
+}
+.bg-reset:hover { border-color: var(--gold); color: var(--gold-light); }
 
 /* ── Layout picker ── */
 .layout-picker { grid-column: 1 / -1; background: var(--surface); border: 1px solid var(--border); padding: 18px; position: relative; }
