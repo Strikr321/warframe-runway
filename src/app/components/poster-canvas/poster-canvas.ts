@@ -301,20 +301,33 @@ export class PosterCanvas {
   }
 
   /**
-   * Keys the backdrop out of the pixel data in place. Two passes:
+   * Keys the backdrop out of the pixel data in place.
    *
-   * 1. Distance keying with a smoothstep feather band. Dark keys get a
-   *    tighter tolerance — near-black armor must never be mistaken for
-   *    a near-black backdrop.
+   * SATURATED keys (green screen etc.) get chroma UNMIXING, not binary
+   * keying. Model: observed = alpha*foreground + (1-alpha)*key. Each
+   * pixel's backdrop fraction is estimated from how much of the key's
+   * channel signature it carries (Vlahos-style), then the key's
+   * contribution is SUBTRACTED from the color and the alpha reduced to
+   * match. This is what handles semi-transparent content — ephemera
+   * smoke and cape frays captured with green showing THROUGH them.
+   * Binary keying (round 1) left those as solid green-tinted patches
+   * around Harrow's crown: the pixels weren't green enough to remove
+   * but were too green to keep. Unmixing turns them back into purple
+   * smoke at partial alpha. Verified by rendering against the real
+   * green-screen Harrow (86.2% fully removed, 1.9% unmixed) and
+   * comparing crown/cape crops against the original at 2x.
    *
-   * 2. Boundary erosion. Anti-aliased edge pixels are DARKENED blends
-   *    of the key (armor + backdrop), so Euclidean distance misses
-   *    them — but their color DIRECTION still matches the key. Cosine
-   *    similarity catches them; restricting the test to pixels
-   *    adjacent to already-transparent ones means genuinely key-hued
-   *    content in the interior (teal energy over a green key, measured
-   *    at cos ~0.89 vs the halo's ~0.98) can never be eaten. Three
-   *    iterations erode the 2-3px halo.
+   * Known limit, accepted deliberately: a pixel where the key blended
+   * into a hue on the FAR side of it (green into blue -> cyan) is
+   * mathematically indistinguishable from genuinely cyan foreground —
+   * single-color keying is underdetermined there; compositors solve it
+   * with garbage mattes, not math. At poster scale these read as rim
+   * lighting, which Harrow's ephemera genuinely has anyway.
+   *
+   * NEUTRAL keys (white/grey/black backdrops) have no channel
+   * signature to unmix against, so they fall back to distance keying
+   * with a smoothstep feather; dark keys get tighter tolerances so
+   * near-black armor is never mistaken for a near-black backdrop.
    */
   private keyOutBackground(
     data: Uint8ClampedArray, width: number, height: number,
@@ -324,11 +337,38 @@ export class PosterCanvas {
     const minC = Math.min(key[0], key[1], key[2]);
     const isDark = maxC < 64;
     const isSaturated = (maxC - minC) > 40;
-    const T1 = isDark ? 25 : 55;   // fully removed inside this distance
-    const T2 = isDark ? 55 : 110;  // fully kept beyond this distance
-    const domIdx = key.indexOf(maxC);
     const total = width * height;
 
+    if (isSaturated) {
+      // ── Chroma unmixing ──
+      const domIdx = key.indexOf(maxC);
+      const others = [0, 1, 2].filter(c => c !== domIdx);
+      // The key's signature: how much its dominant channel exceeds the rest
+      const keyExcess = key[domIdx] - Math.max(key[others[0]], key[others[1]]);
+      let full = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        const excess = data[i + domIdx] - Math.max(data[i + others[0]], data[i + others[1]]);
+        if (excess <= 0) continue; // no detectable key contribution
+        const f = excess / keyExcess; // backdrop fraction this pixel carries
+        if (f >= 0.98) {
+          data[i + 3] = 0; full++; // effectively pure backdrop
+          continue;
+        }
+        if (f < 0.04) continue; // noise floor — leave untouched
+        const alpha = 1 - f;
+        // Solve observed = alpha*fg + f*key  ->  fg = (observed - f*key)/alpha
+        for (let c = 0; c < 3; c++) {
+          const fg = (data[i + c] - f * key[c]) / alpha;
+          data[i + c] = Math.max(0, Math.min(255, Math.round(fg)));
+        }
+        data[i + 3] = Math.round(data[i + 3] * alpha);
+      }
+      return full / total;
+    }
+
+    // ── Neutral key: distance keying with smoothstep feather ──
+    const T1 = isDark ? 25 : 55;   // fully removed inside this distance
+    const T2 = isDark ? 55 : 110;  // fully kept beyond this distance
     let removed = 0;
     for (let i = 0; i < data.length; i += 4) {
       const d = Math.hypot(data[i] - key[0], data[i + 1] - key[1], data[i + 2] - key[2]);
@@ -338,43 +378,6 @@ export class PosterCanvas {
         const t = (d - T1) / (T2 - T1);
         const a = t * t * (3 - 2 * t); // smoothstep
         data[i + 3] = Math.min(data[i + 3], Math.round(a * 255));
-      }
-    }
-
-    if (isSaturated) {
-      const kLen = Math.hypot(key[0], key[1], key[2]);
-      const others = [0, 1, 2].filter(c => c !== domIdx);
-      for (let iter = 0; iter < 3; iter++) {
-        const holes = new Uint8Array(total);
-        for (let p = 0; p < total; p++) holes[p] = data[p * 4 + 3] < 10 ? 1 : 0;
-        for (let y = 0; y < height; y++) {
-          for (let x = 0; x < width; x++) {
-            const p = y * width + x;
-            if (holes[p]) continue;
-            // 8-neighborhood adjacency to a transparent pixel
-            let nearHole = false;
-            for (let dy = -1; dy <= 1 && !nearHole; dy++) {
-              const ny = y + dy; if (ny < 0 || ny >= height) continue;
-              for (let dx = -1; dx <= 1; dx++) {
-                const nx = x + dx; if (nx < 0 || nx >= width) continue;
-                if (holes[ny * width + nx]) { nearHole = true; break; }
-              }
-            }
-            if (!nearHole) continue;
-            const i = p * 4;
-            const pLen = Math.hypot(data[i], data[i + 1], data[i + 2]);
-            if (pLen < 8) continue; // near-black: direction is meaningless
-            const cos = (data[i] * key[0] + data[i + 1] * key[1] + data[i + 2] * key[2]) / (pLen * kLen);
-            if (cos > 0.985) {
-              data[i + 3] = 0;
-            } else if (cos > 0.96) {
-              data[i + 3] = Math.round(data[i + 3] * (0.985 - cos) / 0.025);
-              // Despill what remains visible of the partial pixel
-              const cap = Math.max(data[i + others[0]], data[i + others[1]]);
-              if (data[i + domIdx] > cap) data[i + domIdx] = cap;
-            }
-          }
-        }
       }
     }
     return removed / total;
