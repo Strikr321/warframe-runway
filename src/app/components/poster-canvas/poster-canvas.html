@@ -26,6 +26,11 @@
           </div>
           <h3>Upload Screenshot</h3>
           <p>Drag &amp; drop, click to browse, or Ctrl+V to paste</p>
+          <p class="upload-tip">
+            Solid-color backgrounds (like Captura's green screen) are removed
+            automatically &mdash; just avoid a backdrop color that also appears
+            on your Warframe.
+          </p>
         </div>
       }
 
@@ -48,12 +53,19 @@
 
       @if (hasImage() && detectedTransparent() !== null) {
         <div class="mode-badge" (click)="$event.stopPropagation()">
-          @if (isTransparentMode()) {
-            <span class="mode-dot on"></span> Cutout detected — full-bleed render
+          @if (bgRemovalOn()) {
+            <span class="mode-dot on"></span> Solid background removed
+            <button class="mode-switch" (click)="toggleBgRemoval()">use original</button>
+          } @else if (keyedImageDataUrl()) {
+            <span class="mode-dot"></span> Original &mdash; background kept
+            <button class="mode-switch" (click)="toggleBgRemoval()">remove background</button>
+          } @else if (isTransparentMode()) {
+            <span class="mode-dot on"></span> Cutout detected &mdash; full-bleed render
+            <button class="mode-switch" (click)="toggleModeOverride()">switch</button>
           } @else {
-            <span class="mode-dot"></span> Photo mode — crop &amp; frame
+            <span class="mode-dot"></span> Photo mode &mdash; crop &amp; frame
+            <button class="mode-switch" (click)="toggleModeOverride()">switch</button>
           }
-          <button class="mode-switch" (click)="toggleModeOverride()">switch</button>
         </div>
       }
 

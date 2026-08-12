@@ -177,3 +177,19 @@
   pointer-events: none;
 }
 .toast.show { transform: translateX(-50%) translateY(0); }
+/* ═══════════════════════════════════════════════════════════
+   MONOCHROME BACKGROUND REMOVAL — append to the END of
+   src/app/components/poster-canvas/poster-canvas.css
+   (this is an addition, not a replacement — your existing CSS
+   file stays as it is, just paste this at the bottom)
+   ═══════════════════════════════════════════════════════════ */
+
+.upload-tip {
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--text-dim, #907060);
+  max-width: 320px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.5;
+}
