@@ -8,6 +8,9 @@ import { LAYOUTS, LAYOUT_KEYS, PosterLayout } from '../../../data/layouts.data';
 import { PALETTES, PALETTE_NAMES } from '../../../data/palettes.data';
 import { PaletteGrid } from '../../../shared/palette-grid/palette-grid';
 import { ToastService } from '../../../shared/toast/toast.service';
+import { hexToRgb, rgbaStr, mixRgb, rgbCss, richenForGlow, dominantHueColor } from '../engine/color';
+import { detectTransparency, tryRemoveMonochromeBackground } from '../engine/chroma-key';
+import { trimTransparentBounds } from '../engine/cutout-bounds';
 
 interface SourceCrop { srcX: number; srcY: number; srcW: number; srcH: number; }
 interface PosterColor { hex: string; label: string; }
@@ -191,14 +194,14 @@ export class PosterCanvas {
         this.bgRemovalOn.set(false);
         this.removedBgHex.set(null);
 
-        const transparent = this.detectTransparency(img);
+        const transparent = detectTransparency(img);
         if (transparent) {
           this.imageDataUrl.set(dataUrl);
           this.detectedTransparent.set(true);
           this.showToast('Cutout detected — full-bleed render');
         } else {
           // Opaque — but is it a solid-color backdrop we can key out?
-          const keyed = this.tryRemoveMonochromeBackground(img);
+          const keyed = tryRemoveMonochromeBackground(img);
           if (keyed) {
             this.originalImageDataUrl.set(dataUrl);
             this.keyedImageDataUrl.set(keyed.dataUrl);
@@ -219,195 +222,6 @@ export class PosterCanvas {
       img.src = dataUrl;
     };
     reader.readAsDataURL(file);
-  }
-
-  /**
-   * Reads the image's real alpha channel to decide which rendering
-   * pipeline fits — not just "is this a PNG" (opaque PNGs are common),
-   * but "does a meaningful fraction of it actually vary in opacity."
-   * A handful of stray semi-transparent pixels (compression artifacts,
-   * anti-aliased edges) shouldn't flip an otherwise-opaque screenshot
-   * into full-bleed mode, so this requires a real proportion, not just
-   * any non-255 pixel at all.
-   */
-  private detectTransparency(img: HTMLImageElement): boolean {
-    const cv = document.createElement('canvas');
-    // Sampling at a small fixed size is enough to answer "is there
-    // real transparency" without reading a full-resolution image.
-    const sw = 120, sh = Math.max(1, Math.round(120 * img.naturalHeight / img.naturalWidth));
-    cv.width = sw; cv.height = sh;
-    const ctx = cv.getContext('2d', { willReadFrequently: true })!;
-    ctx.drawImage(img, 0, 0, sw, sh);
-    const data = ctx.getImageData(0, 0, sw, sh).data;
-    let nonOpaque = 0;
-    const total = sw * sh;
-    for (let i = 3; i < data.length; i += 4) {
-      if (data[i] < 250) nonOpaque++;
-    }
-    return (nonOpaque / total) > 0.03; // >3% of the image has real transparency
-  }
-
-  // ═══════════════════════════════════════════════════════════
-  // MONOCHROME BACKGROUND REMOVAL
-  // Runs once at upload; produces a transparent PNG that flows
-  // through the existing transparent-mode pipeline unchanged.
-  // Constants verified by rendering against a real green-screen
-  // Captura shot (key detected at rgb(0,195,117), 91.5% of the
-  // image keyed out), not guessed — including the boundary-erosion
-  // pass, which exists because the first version left a visible
-  // dark-green halo that only showed up at 3x zoom on a dark
-  // composite. Caught by rendering, not by compilation.
-  // ═══════════════════════════════════════════════════════════
-
-  /**
-   * Samples a thin border ring and decides whether it's a uniform
-   * backdrop. Uses "fraction of samples near the mean" rather than
-   * pure std-dev, so a limb or syandana poking into the border doesn't
-   * veto an otherwise-obvious green screen. Verified: 100% uniformity
-   * on a real Captura green screen; a normal busy in-game scene fails
-   * the 92% bar.
-   */
-  private detectMonochromeBackground(
-    data: Uint8ClampedArray, width: number, height: number,
-  ): [number, number, number] | null {
-    const margin = Math.max(2, Math.round(Math.min(width, height) * 0.02));
-    const step = 4;
-    const samples: [number, number, number][] = [];
-    const push = (x: number, y: number) => {
-      const i = (y * width + x) * 4;
-      if (data[i + 3] < 250) return; // real transparency -> not this path
-      samples.push([data[i], data[i + 1], data[i + 2]]);
-    };
-    for (let y = 0; y < height; y += step) {
-      for (let x = 0; x < margin; x += step) push(x, y);
-      for (let x = width - margin; x < width; x += step) push(x, y);
-    }
-    for (let x = 0; x < width; x += step) {
-      for (let y = 0; y < margin; y += step) push(x, y);
-      for (let y = height - margin; y < height; y += step) push(x, y);
-    }
-    if (samples.length < 50) return null;
-
-    const mean: [number, number, number] = [0, 0, 0];
-    for (const s of samples) { mean[0] += s[0]; mean[1] += s[1]; mean[2] += s[2]; }
-    mean[0] /= samples.length; mean[1] /= samples.length; mean[2] /= samples.length;
-
-    let near = 0;
-    for (const s of samples) {
-      const d = Math.hypot(s[0] - mean[0], s[1] - mean[1], s[2] - mean[2]);
-      if (d < 30) near++;
-    }
-    return (near / samples.length) >= 0.92 ? mean : null;
-  }
-
-  /**
-   * Keys the backdrop out of the pixel data in place.
-   *
-   * SATURATED keys (green screen etc.) get chroma UNMIXING, not binary
-   * keying. Model: observed = alpha*foreground + (1-alpha)*key. Each
-   * pixel's backdrop fraction is estimated from how much of the key's
-   * channel signature it carries (Vlahos-style), then the key's
-   * contribution is SUBTRACTED from the color and the alpha reduced to
-   * match. This is what handles semi-transparent content — ephemera
-   * smoke and cape frays captured with green showing THROUGH them.
-   * Binary keying (round 1) left those as solid green-tinted patches
-   * around Harrow's crown: the pixels weren't green enough to remove
-   * but were too green to keep. Unmixing turns them back into purple
-   * smoke at partial alpha. Verified by rendering against the real
-   * green-screen Harrow (86.2% fully removed, 1.9% unmixed) and
-   * comparing crown/cape crops against the original at 2x.
-   *
-   * Known limit, accepted deliberately: a pixel where the key blended
-   * into a hue on the FAR side of it (green into blue -> cyan) is
-   * mathematically indistinguishable from genuinely cyan foreground —
-   * single-color keying is underdetermined there; compositors solve it
-   * with garbage mattes, not math. At poster scale these read as rim
-   * lighting, which Harrow's ephemera genuinely has anyway.
-   *
-   * NEUTRAL keys (white/grey/black backdrops) have no channel
-   * signature to unmix against, so they fall back to distance keying
-   * with a smoothstep feather; dark keys get tighter tolerances so
-   * near-black armor is never mistaken for a near-black backdrop.
-   */
-  private keyOutBackground(
-    data: Uint8ClampedArray, width: number, height: number,
-    key: [number, number, number],
-  ): number {
-    const maxC = Math.max(key[0], key[1], key[2]);
-    const minC = Math.min(key[0], key[1], key[2]);
-    const isDark = maxC < 64;
-    const isSaturated = (maxC - minC) > 40;
-    const total = width * height;
-
-    if (isSaturated) {
-      // ── Chroma unmixing ──
-      const domIdx = key.indexOf(maxC);
-      const others = [0, 1, 2].filter(c => c !== domIdx);
-      // The key's signature: how much its dominant channel exceeds the rest
-      const keyExcess = key[domIdx] - Math.max(key[others[0]], key[others[1]]);
-      let full = 0;
-      for (let i = 0; i < data.length; i += 4) {
-        const excess = data[i + domIdx] - Math.max(data[i + others[0]], data[i + others[1]]);
-        if (excess <= 0) continue; // no detectable key contribution
-        const f = excess / keyExcess; // backdrop fraction this pixel carries
-        if (f >= 0.98) {
-          data[i + 3] = 0; full++; // effectively pure backdrop
-          continue;
-        }
-        if (f < 0.04) continue; // noise floor — leave untouched
-        const alpha = 1 - f;
-        // Solve observed = alpha*fg + f*key  ->  fg = (observed - f*key)/alpha
-        for (let c = 0; c < 3; c++) {
-          const fg = (data[i + c] - f * key[c]) / alpha;
-          data[i + c] = Math.max(0, Math.min(255, Math.round(fg)));
-        }
-        data[i + 3] = Math.round(data[i + 3] * alpha);
-      }
-      return full / total;
-    }
-
-    // ── Neutral key: distance keying with smoothstep feather ──
-    const T1 = isDark ? 25 : 55;   // fully removed inside this distance
-    const T2 = isDark ? 55 : 110;  // fully kept beyond this distance
-    let removed = 0;
-    for (let i = 0; i < data.length; i += 4) {
-      const d = Math.hypot(data[i] - key[0], data[i + 1] - key[1], data[i + 2] - key[2]);
-      if (d <= T1) {
-        data[i + 3] = 0; removed++;
-      } else if (d < T2) {
-        const t = (d - T1) / (T2 - T1);
-        const a = t * t * (3 - 2 * t); // smoothstep
-        data[i + 3] = Math.min(data[i + 3], Math.round(a * 255));
-      }
-    }
-    return removed / total;
-  }
-
-  /**
-   * Orchestrator: full-res scan -> detect -> key -> re-encode.
-   * Returns null when there's no uniform backdrop (a normal
-   * screenshot) or when keying removed implausibly little — a
-   * defensive floor, since a real backdrop is a meaningful share of
-   * the image (91.5% on the verified test shot).
-   */
-  private tryRemoveMonochromeBackground(
-    img: HTMLImageElement,
-  ): { dataUrl: string; hex: string } | null {
-    const cv = document.createElement('canvas');
-    cv.width = img.naturalWidth; cv.height = img.naturalHeight;
-    const ctx = cv.getContext('2d', { willReadFrequently: true })!;
-    ctx.drawImage(img, 0, 0);
-    const imgData = ctx.getImageData(0, 0, cv.width, cv.height);
-
-    const key = this.detectMonochromeBackground(imgData.data, cv.width, cv.height);
-    if (!key) return null;
-
-    const removedFrac = this.keyOutBackground(imgData.data, cv.width, cv.height, key);
-    if (removedFrac < 0.15) return null; // barely anything keyed -> probably not a backdrop
-
-    ctx.putImageData(imgData, 0, 0);
-    const hex = '#' + key.map(c => Math.round(c).toString(16).padStart(2, '0')).join('');
-    return { dataUrl: cv.toDataURL('image/png'), hex };
   }
 
   @HostListener('window:resize')
@@ -553,176 +367,12 @@ export class PosterCanvas {
   // visual piece, composed by generatePoster() at the bottom.
   // ═══════════════════════════════════════════════════════════
 
-  private hexToRgb(hex: string): [number, number, number] {
-    return [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
-  }
-  private rgbaStr(hex: string, alpha = 1): string {
-    const [r, g, b] = this.hexToRgb(hex);
-    return `rgba(${r},${g},${b},${alpha})`;
-  }
-
   // ═══════════════════════════════════════════════════════════
   // NEW ENGINE — full-bleed compositing for background-removed
   // cutouts. Ported from a Python/PIL prototype built and approved
   // against real screenshots before any of this was written as
   // TypeScript — the algorithm itself isn't a guess.
   // ═══════════════════════════════════════════════════════════
-
-  private mixRgb(c1: [number,number,number], c2: [number,number,number], t: number): [number,number,number] {
-    return [c1[0]+(c2[0]-c1[0])*t, c1[1]+(c2[1]-c1[1])*t, c1[2]+(c2[2]-c1[2])*t];
-  }
-  private rgbCss(c: [number,number,number], a = 1): string {
-    return `rgba(${Math.round(c[0])},${Math.round(c[1])},${Math.round(c[2])},${a})`;
-  }
-
-  /**
-   * Trims excess transparent padding around a cutout — but bounded by
-   * CONNECTED COMPONENTS, not by every last visible pixel. Why: a
-   * one-sided ephemera (Mesa's Conquera) leaves tiny opaque sparks and
-   * faint wisps drifting far from the body. Counting any alpha>10
-   * pixel let a single 59px spark drag the box edge 150px right,
-   * off-centering the whole poster (box center 1123 vs the body's real
-   * 1086 on the verified Mesa shot). Alternatives measured and
-   * rejected: a higher alpha threshold misses opaque sparks; trimming
-   * by alpha-mass percentile clips thin-but-solid geometry (Ash's horn
-   * tips). Connectivity is the property that actually separates them:
-   * horns are thin but ATTACHED, sparks are islands. So: label
-   * components (4-neighbor BFS), keep every component at least 0.5% the
-   * size of the largest (protects real pieces if keying ever splits
-   * one), and take the union of their bounds. Verified across Mesa,
-   * Harrow, and Ash: Mesa recenters, the other two are unchanged.
-   */
-  private trimTransparentBounds(imgData: ImageData): { x: number; y: number; w: number; h: number } {
-    const { data, width, height } = imgData;
-    const total = width * height;
-
-    const mask = new Uint8Array(total);
-    let any = false;
-    for (let p = 0; p < total; p++) {
-      if (data[p * 4 + 3] > 10) { mask[p] = 1; any = true; }
-    }
-    if (!any) return { x: 0, y: 0, w: width, h: height }; // fully empty — bail safely
-
-    const label = new Int32Array(total).fill(-1);
-    const queue = new Int32Array(total);
-    const comps: { n: number; minX: number; maxX: number; minY: number; maxY: number }[] = [];
-    for (let start = 0; start < total; start++) {
-      if (!mask[start] || label[start] >= 0) continue;
-      const id = comps.length;
-      let head = 0, tail = 0;
-      queue[tail++] = start; label[start] = id;
-      const c = { n: 0, minX: width, maxX: 0, minY: height, maxY: 0 };
-      while (head < tail) {
-        const p = queue[head++]; c.n++;
-        const x = p % width, y = (p / width) | 0;
-        if (x < c.minX) c.minX = x; if (x > c.maxX) c.maxX = x;
-        if (y < c.minY) c.minY = y; if (y > c.maxY) c.maxY = y;
-        if (x > 0 && mask[p - 1] && label[p - 1] < 0) { label[p - 1] = id; queue[tail++] = p - 1; }
-        if (x < width - 1 && mask[p + 1] && label[p + 1] < 0) { label[p + 1] = id; queue[tail++] = p + 1; }
-        if (y > 0 && mask[p - width] && label[p - width] < 0) { label[p - width] = id; queue[tail++] = p - width; }
-        if (y < height - 1 && mask[p + width] && label[p + width] < 0) { label[p + width] = id; queue[tail++] = p + width; }
-      }
-      comps.push(c);
-    }
-
-    let largest = 0;
-    for (const c of comps) if (c.n > largest) largest = c.n;
-    const keepMin = largest * 0.005;
-    let minX = width, maxX = 0, minY = height, maxY = 0;
-    for (const c of comps) {
-      if (c.n < keepMin) continue;
-      if (c.minX < minX) minX = c.minX; if (c.maxX > maxX) maxX = c.maxX;
-      if (c.minY < minY) minY = c.minY; if (c.maxY > maxY) maxY = c.maxY;
-    }
-
-    const padX = Math.round((maxX - minX) * 0.025), padY = Math.round((maxY - minY) * 0.025);
-    const x = Math.max(0, minX - padX), y = Math.max(0, minY - padY);
-    const w = Math.min(width, maxX + padX) - x, h = Math.min(height, maxY + padY) - y;
-    return { x, y, w, h };
-  }
-
-  /**
-   * Same technique as the Python prototype: build a hue histogram
-   * weighted by saturation*value (so vivid, bright pixels count for
-   * more), find the peak hue, then represent it vividly rather than
-   * literally averaging — averaging a teal energy color with black
-   * armor produces muddy grey, not teal.
-   */
-  private dominantHueColor(imgData: ImageData): [number, number, number] {
-    const { data } = imgData;
-    const hist = new Float64Array(48);
-    const satAtHue: number[] = new Array(48).fill(0);
-    const valAtHue: number[] = new Array(48).fill(0);
-    const countAtHue: number[] = new Array(48).fill(0);
-
-    for (let i = 0; i < data.length; i += 4) {
-      const a = data[i+3];
-      if (a < 200) continue;
-      const r = data[i]/255, g = data[i+1]/255, b = data[i+2]/255;
-      const max = Math.max(r,g,b), min = Math.min(r,g,b);
-      const v = max;
-      const s = max > 0 ? (max-min)/max : 0;
-      if (s <= 0.28 || v <= 0.18 || v >= 0.97) continue;
-      let h = 0;
-      if (max === min) h = 0;
-      else if (max === r) h = ((g-b)/(max-min)) % 6;
-      else if (max === g) h = (b-r)/(max-min) + 2;
-      else h = (r-g)/(max-min) + 4;
-      h = h/6; if (h < 0) h += 1;
-      const bin = Math.min(47, Math.floor(h*48));
-      const w = s*v;
-      hist[bin] += w; satAtHue[bin] += s*w; valAtHue[bin] += v*w; countAtHue[bin] += w;
-    }
-    let peak = 0;
-    for (let i = 1; i < 48; i++) if (hist[i] > hist[peak]) peak = i;
-    if (hist[peak] < 1e-6) return [140,140,160];
-    const peakHue = (peak + 0.5) / 48;
-    const medS = countAtHue[peak] > 0 ? satAtHue[peak]/countAtHue[peak] : 0.6;
-    const medV = countAtHue[peak] > 0 ? valAtHue[peak]/countAtHue[peak] : 0.6;
-    const vividS = Math.min(0.85, Math.max(0.55, medS*1.3));
-    const vividV = Math.min(0.95, Math.max(0.55, medV*1.2));
-    return this.hsvToRgb(peakHue, vividS, vividV);
-  }
-
-  private hsvToRgb(h: number, s: number, v: number): [number, number, number] {
-    const i = Math.floor(h*6), f = h*6-i, p = v*(1-s), q = v*(1-f*s), t = v*(1-(1-f)*s);
-    let r=0,g=0,b=0;
-    switch (i%6) {
-      case 0: r=v;g=t;b=p; break; case 1: r=q;g=v;b=p; break; case 2: r=p;g=v;b=t; break;
-      case 3: r=p;g=q;b=v; break; case 4: r=t;g=p;b=v; break; case 5: r=v;g=p;b=q; break;
-    }
-    return [r*255, g*255, b*255];
-  }
-
-  private rgbToHsv(rgb: [number,number,number]): [number, number, number] {
-    const r = rgb[0]/255, g = rgb[1]/255, b = rgb[2]/255;
-    const max = Math.max(r,g,b), min = Math.min(r,g,b), d = max-min;
-    let h = 0;
-    if (d > 0) {
-      if (max === r) h = ((g-b)/d) % 6;
-      else if (max === g) h = (b-r)/d + 2;
-      else h = (r-g)/d + 4;
-      h = h/6; if (h < 0) h += 1;
-    }
-    const s = max > 0 ? d/max : 0;
-    return [h, s, max];
-  }
-
-  /**
-   * Guarantees the glow slot reads as genuinely bright regardless of
-   * what color feeds it — a flat "mix 12% toward white" only works
-   * if the input is already fairly bright/saturated (gold, purple,
-   * red all pass through fine). It silently fails for a deliberately
-   * DARK input (the "dark neutral" landing here via the swap toggle),
-   * since 12% of near-black is still near-black. Flooring the actual
-   * HSV value/saturation fixes this for every case, not just the ones
-   * already tested — dark inputs get genuinely lifted, already-bright
-   * inputs are left alone (their value is already above the floor).
-   */
-  private richenForGlow(rgb: [number,number,number]): [number,number,number] {
-    const [h, s, v] = this.rgbToHsv(rgb);
-    return this.hsvToRgb(h, Math.max(s, 0.18), Math.max(v, 0.62));
-  }
 
   /**
    * The bell-curve atmospheric gradient + glow + vignette.
@@ -735,8 +385,8 @@ export class PosterCanvas {
    * there's only one flow, not six different ones.
    */
   private drawAtmosphereBg(ctx: CanvasRenderingContext2D, W: number, H: number, edgeColor: [number,number,number], glowColor: [number,number,number]) {
-    const deepEdge = this.mixRgb(edgeColor, [8,5,6], 0.85);
-    const richGlow = this.richenForGlow(glowColor);
+    const deepEdge = mixRgb(edgeColor, [8,5,6], 0.85);
+    const richGlow = richenForGlow(glowColor);
     // Centered at the true vertical midpoint — a there-and-back flow
     // that peaks off-center reads as lopsided on a bare background,
     // even though the same math looked fine once a character was
@@ -751,7 +401,7 @@ export class PosterCanvas {
     for (let i = 0; i <= STOPS; i++) {
       const t = i / STOPS;
       const glow = Math.exp(-((t-bandCenter)**2)/(2*bandWidth**2));
-      bgGrad.addColorStop(t, this.rgbCss(this.mixRgb(deepEdge, richGlow, glow)));
+      bgGrad.addColorStop(t, rgbCss(mixRgb(deepEdge, richGlow, glow)));
     }
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, W, H);
@@ -764,18 +414,18 @@ export class PosterCanvas {
     // begin with; it's continuous math, so there's nothing to blur.
     const gcx = W*0.5, gcy = H*0.38, maxRad = 620;
     const glowGrad = ctx.createRadialGradient(gcx, gcy, 0, gcx, gcy, maxRad);
-    glowGrad.addColorStop(0,    this.rgbCss(richGlow, 0.22));
-    glowGrad.addColorStop(0.3,  this.rgbCss(richGlow, 0.17));
-    glowGrad.addColorStop(0.6,  this.rgbCss(richGlow, 0.09));
-    glowGrad.addColorStop(1,    this.rgbCss(richGlow, 0));
+    glowGrad.addColorStop(0,    rgbCss(richGlow, 0.22));
+    glowGrad.addColorStop(0.3,  rgbCss(richGlow, 0.17));
+    glowGrad.addColorStop(0.6,  rgbCss(richGlow, 0.09));
+    glowGrad.addColorStop(1,    rgbCss(richGlow, 0));
     ctx.fillStyle = glowGrad;
     ctx.fillRect(0, 0, W, H);
 
     // Vignette — same approach: a radial gradient, transparent center,
     // darkening toward the far corners, rather than a blurred rectangle.
     const vigGrad = ctx.createRadialGradient(W/2, H*0.45, H*0.35, W/2, H*0.45, H*0.85);
-    vigGrad.addColorStop(0, this.rgbCss(deepEdge, 0));
-    vigGrad.addColorStop(1, this.rgbCss(deepEdge, 0.65));
+    vigGrad.addColorStop(0, rgbCss(deepEdge, 0));
+    vigGrad.addColorStop(1, rgbCss(deepEdge, 0.65));
     ctx.fillStyle = vigGrad;
     ctx.fillRect(0, 0, W, H);
 
@@ -832,8 +482,8 @@ export class PosterCanvas {
     scanCtx.drawImage(rawImg, 0, 0);
     const fullData = scanCtx.getImageData(0, 0, scanCv.width, scanCv.height);
 
-    const bounds = this.trimTransparentBounds(fullData);
-    const autoAccent = this.dominantHueColor(fullData);
+    const bounds = trimTransparentBounds(fullData);
+    const autoAccent = dominantHueColor(fullData);
 
     // Background color has exactly two slots — edge (both top and
     // bottom) and glow (the bright peak) — regardless of mode:
@@ -848,9 +498,9 @@ export class PosterCanvas {
 
     let edgeSlot: [number,number,number], glowSlot: [number,number,number];
     if (c1 && c2) {
-      edgeSlot = this.hexToRgb(c1.hex); glowSlot = this.hexToRgb(c2.hex);
+      edgeSlot = hexToRgb(c1.hex); glowSlot = hexToRgb(c2.hex);
     } else if (c1) {
-      edgeSlot = DARK_NEUTRAL; glowSlot = this.hexToRgb(c1.hex);
+      edgeSlot = DARK_NEUTRAL; glowSlot = hexToRgb(c1.hex);
     } else {
       edgeSlot = DARK_NEUTRAL; glowSlot = autoAccent;
     }
@@ -878,12 +528,12 @@ export class PosterCanvas {
     const dividerY = subBaseline + 20;
 
     ctx.textBaseline = 'alphabetic';
-    ctx.fillStyle = this.rgbCss(lightTxt);
+    ctx.fillStyle = rgbCss(lightTxt);
     this.drawTrackedText(ctx, 'WARFRAME', W/2, titleBaseline, 6);
     ctx.font = '16px Cinzel, serif';
-    ctx.fillStyle = this.rgbCss(accentLight);
+    ctx.fillStyle = rgbCss(accentLight);
     this.drawTrackedText(ctx, 'FASHION CARD', W/2, subBaseline, 10);
-    ctx.strokeStyle = this.rgbCss(accentLight, 0.55); ctx.lineWidth = 1;
+    ctx.strokeStyle = rgbCss(accentLight, 0.55); ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(W*0.34, dividerY); ctx.lineTo(W*0.66, dividerY); ctx.stroke();
     return dividerY;
   }
@@ -939,15 +589,15 @@ export class PosterCanvas {
     ctx.textAlign = align;
     let y = opts.topY;
     for (const f of opts.fields) {
-      ctx.font = `${labelSize}px Cinzel, serif`; ctx.fillStyle = this.rgbCss(opts.accentLight);
+      ctx.font = `${labelSize}px Cinzel, serif`; ctx.fillStyle = rgbCss(opts.accentLight);
       ctx.fillText(f.label, x, y);
-      ctx.font = `${valueSize}px "Cormorant Garamond", serif`; ctx.fillStyle = this.rgbCss(opts.lightTxt);
+      ctx.font = `${valueSize}px "Cormorant Garamond", serif`; ctx.fillStyle = rgbCss(opts.lightTxt);
       ctx.fillText(f.value, x, y+29);
       y += perEntry;
     }
     if (hasBoth) {
       y += dividerGap*0.3;
-      ctx.strokeStyle = this.rgbCss(opts.dimTxt, 0.5); ctx.lineWidth = 1;
+      ctx.strokeStyle = rgbCss(opts.dimTxt, 0.5); ctx.lineWidth = 1;
       ctx.beginPath();
       if (align === 'right') { ctx.moveTo(x-220, y); ctx.lineTo(x, y); }
       else { ctx.moveTo(x, y); ctx.lineTo(x+220, y); }
@@ -962,11 +612,11 @@ export class PosterCanvas {
       if (align === 'right') {
         const pillX = x - tw - 44;
         ctx.beginPath(); ctx.roundRect(pillX, y+4, 32, 15, 7); ctx.fill();
-        ctx.fillStyle = this.rgbCss(opts.lightTxt); ctx.textAlign = 'right';
+        ctx.fillStyle = rgbCss(opts.lightTxt); ctx.textAlign = 'right';
         ctx.fillText(text, x, y+19);
       } else {
         ctx.beginPath(); ctx.roundRect(x, y+4, 32, 15, 7); ctx.fill();
-        ctx.fillStyle = this.rgbCss(opts.lightTxt); ctx.textAlign = 'left';
+        ctx.fillStyle = rgbCss(opts.lightTxt); ctx.textAlign = 'left';
         ctx.fillText(text, x+44, y+19);
       }
       y += perEntry;
@@ -979,11 +629,11 @@ export class PosterCanvas {
     lightTxt: [number,number,number], dimTxt: [number,number,number], accentLight: [number,number,number],
   ) {
     ctx.textAlign = align === 'center' ? 'center' : 'left';
-    ctx.font = '600 54px Cinzel, serif'; ctx.fillStyle = this.rgbCss(lightTxt);
+    ctx.font = '600 54px Cinzel, serif'; ctx.fillStyle = rgbCss(lightTxt);
     ctx.fillText((this.frame() || 'WARFRAME').toUpperCase(), x, y);
-    ctx.font = '26px "Cormorant Garamond", serif'; ctx.fillStyle = this.rgbCss(dimTxt);
+    ctx.font = '26px "Cormorant Garamond", serif'; ctx.fillStyle = rgbCss(dimTxt);
     ctx.fillText(`By ${this.creator() || 'Tenno'}`, x, y+60);
-    ctx.font = 'italic 23px "Cormorant Garamond", serif'; ctx.fillStyle = this.rgbCss(accentLight);
+    ctx.font = 'italic 23px "Cormorant Garamond", serif'; ctx.fillStyle = rgbCss(accentLight);
     ctx.fillText(this.name() || '', x, y+87);
     ctx.textAlign = 'left';
   }
@@ -998,8 +648,8 @@ export class PosterCanvas {
   private async generateClassicLeftTransparent() {
     const { ctx, W, H, rawImg, bounds, accent, deep } = await this.setupTransparentCanvas();
     const lightTxt: [number,number,number] = [232,226,214];
-    const dimTxt = this.mixRgb(lightTxt, deep, 0.45);
-    const accentLight = this.mixRgb(accent, [255,255,255], 0.45);
+    const dimTxt = mixRgb(lightTxt, deep, 0.45);
+    const accentLight = mixRgb(accent, [255,255,255], 0.45);
 
     const HEADER_BOTTOM = this.drawComputedHeader(ctx, W, lightTxt, accentLight);
     const SIG_TOP_MARGIN = 220, FRAME_SAFE_MARGIN = 68, TOP_CLEARANCE = 90;
@@ -1030,8 +680,8 @@ export class PosterCanvas {
   private async generateClassicRightTransparent() {
     const { ctx, W, H, rawImg, bounds, accent, deep } = await this.setupTransparentCanvas();
     const lightTxt: [number,number,number] = [232,226,214];
-    const dimTxt = this.mixRgb(lightTxt, deep, 0.45);
-    const accentLight = this.mixRgb(accent, [255,255,255], 0.45);
+    const dimTxt = mixRgb(lightTxt, deep, 0.45);
+    const accentLight = mixRgb(accent, [255,255,255], 0.45);
 
     const HEADER_BOTTOM = this.drawComputedHeader(ctx, W, lightTxt, accentLight);
     const SIG_TOP_MARGIN = 220, FRAME_SAFE_MARGIN = 68, TOP_CLEARANCE = 90;
@@ -1062,8 +712,8 @@ export class PosterCanvas {
   private async generateSplitTransparent() {
     const { ctx, W, H, rawImg, bounds, accent, deep } = await this.setupTransparentCanvas();
     const lightTxt: [number,number,number] = [232,226,214];
-    const dimTxt = this.mixRgb(lightTxt, deep, 0.45);
-    const accentLight = this.mixRgb(accent, [255,255,255], 0.45);
+    const dimTxt = mixRgb(lightTxt, deep, 0.45);
+    const accentLight = mixRgb(accent, [255,255,255], 0.45);
 
     const HEADER_BOTTOM = this.drawComputedHeader(ctx, W, lightTxt, accentLight);
     const FRAME_SAFE_MARGIN = 68, TOP_CLEARANCE = 90;
@@ -1106,8 +756,8 @@ export class PosterCanvas {
   private async generateShowcaseTransparent() {
     const { ctx, W, H, rawImg, bounds, accent, deep } = await this.setupTransparentCanvas();
     const lightTxt: [number,number,number] = [232,226,214];
-    const dimTxt = this.mixRgb(lightTxt, deep, 0.45);
-    const accentLight = this.mixRgb(accent, [255,255,255], 0.45);
+    const dimTxt = mixRgb(lightTxt, deep, 0.45);
+    const accentLight = mixRgb(accent, [255,255,255], 0.45);
 
     const HEADER_BOTTOM = this.drawComputedHeader(ctx, W, lightTxt, accentLight);
     // TOP_CLEARANCE matches the value used everywhere else (90, not a
@@ -1136,7 +786,7 @@ export class PosterCanvas {
     this.drawSignature(ctx, 68, sigY, 'left', lightTxt, dimTxt, accentLight);
 
     const bandTop = H - BAND_H;
-    ctx.strokeStyle = this.rgbCss(dimTxt, 0.5); ctx.lineWidth = 1;
+    ctx.strokeStyle = rgbCss(dimTxt, 0.5); ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(60, bandTop-6); ctx.lineTo(W-60, bandTop-6); ctx.stroke();
 
     const { fields, colorRows } = this.getFieldsAndColors();
@@ -1168,10 +818,10 @@ export class PosterCanvas {
     const y2 = my + Math.cos(angle) * len / 2;
 
     const bg = ctx.createLinearGradient(x1, y1, x2, y2);
-    bg.addColorStop(0, this.rgbaStr(c1, 1));
-    bg.addColorStop(0.30, this.rgbaStr(c1, 1));
-    bg.addColorStop(0.70, this.rgbaStr(c2, 1));
-    bg.addColorStop(1, this.rgbaStr(c2, 1));
+    bg.addColorStop(0, rgbaStr(c1, 1));
+    bg.addColorStop(0.30, rgbaStr(c1, 1));
+    bg.addColorStop(0.70, rgbaStr(c2, 1));
+    bg.addColorStop(1, rgbaStr(c2, 1));
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, W, H);
 
