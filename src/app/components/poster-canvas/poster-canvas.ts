@@ -1,10 +1,11 @@
 import {
-  Component, ElementRef, HostListener, ViewChild, computed, input, signal,
+  Component, ElementRef, HostListener, ViewChild, computed, inject, input, signal,
 } from '@angular/core';
 import { Attachments, CHANNELS, ChannelKey, ColorChannelState, LOADOUT_FIELDS } from '../../models/loadout.model';
 import { LAYOUTS, LAYOUT_KEYS, PosterLayout } from '../../data/layouts.data';
 import { PALETTES, PALETTE_NAMES } from '../../data/palettes.data';
 import { PaletteGrid } from '../palette-grid/palette-grid';
+import { ToastService } from '../../shared/toast/toast.service';
 
 interface SourceCrop { srcX: number; srcY: number; srcW: number; srcH: number; }
 interface PosterColor { hex: string; label: string; }
@@ -124,13 +125,10 @@ export class PosterCanvas {
 
   // ── Output / status ──────────────────────────────────────────
   posterReady = signal(false);
-  toast = signal('');
 
-  private toastTimer: ReturnType<typeof setTimeout> | undefined;
+  private toast = inject(ToastService);
   private showToast(msg: string) {
-    this.toast.set(msg);
-    clearTimeout(this.toastTimer);
-    this.toastTimer = setTimeout(() => this.toast.set(''), 2500);
+    this.toast.show(msg);
   }
 
   // ═══════════════════════════════════════════════════════════

@@ -1,5 +1,6 @@
 import { Component } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { Toast } from './shared/toast/toast';
 
 /**
  * ROOT COMPONENT — the shell of the app.
@@ -13,7 +14,7 @@ import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
  */
 @Component({
   selector: 'app-root',                                   // the tag name used in index.html
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],  // what this template is allowed to use
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, Toast],  // what this template is allowed to use
   templateUrl: './app.html',
   styleUrl: './app.css',
 })

@@ -30,23 +30,6 @@
 }
 .create-card:hover .create-card-label { color: var(--gold); }
 
-.toast {
-  position: fixed;
-  bottom: 30px; left: 50%;
-  transform: translateX(-50%) translateY(80px);
-  background: var(--surface2);
-  border: 1px solid var(--gold);
-  color: var(--gold-light);
-  font-family: 'Cinzel', serif;
-  font-size: 11px;
-  letter-spacing: .2em;
-  padding: 12px 24px;
-  z-index: 100;
-  transition: transform .4s cubic-bezier(.175,.885,.32,1.275);
-  pointer-events: none;
-}
-.toast.show { transform: translateX(-50%) translateY(0); }
-
 /* ── Empty state (Step 3) ── */
 .catalog-status {
   text-align: center;

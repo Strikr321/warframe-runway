@@ -7,6 +7,7 @@ import { StatsBanner } from '../../components/stats-banner/stats-banner';
 import { RecentRow } from '../../components/recent-row/recent-row';
 import { ControlsBar, ViewMode, ChipFilter } from '../../components/controls-bar/controls-bar';
 import { FrameCard } from '../../components/frame-card/frame-card';
+import { ToastService } from '../../shared/toast/toast.service';
 
 /**
  * STEP 5 CHANGE: `hoveredFrame` is the shared signal that links the
@@ -35,6 +36,7 @@ export class Collection {
   private store = inject(LoadoutService);
   private router = inject(Router);
   catalog = inject(FrameCatalogService);
+  private toast = inject(ToastService);
 
   loadouts = this.store.loadouts;
   view = signal<ViewMode>('frame');
@@ -43,7 +45,6 @@ export class Collection {
   hoveredFrame = signal<string | null>(null);
 
   frames = this.catalog.frames;
-  toast = signal('');
 
   stats = computed(() => {
     const all = this.loadouts();
@@ -117,17 +118,10 @@ export class Collection {
   // ── Demo data controls (temporary until real usage builds up) ──
   seedDemo() {
     this.store.seedDemo();
-    this.showToast('Sample loadouts loaded');
+    this.toast.show('Sample loadouts loaded');
   }
   clearAll() {
     this.store.clearAll();
-    this.showToast('All loadouts cleared');
-  }
-
-  private toastTimer: ReturnType<typeof setTimeout> | undefined;
-  showToast(msg: string) {
-    this.toast.set(msg);
-    clearTimeout(this.toastTimer);
-    this.toastTimer = setTimeout(() => this.toast.set(''), 2500);
+    this.toast.show('All loadouts cleared');
   }
 }
