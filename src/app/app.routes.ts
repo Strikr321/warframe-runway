@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
-import { Collection } from './pages/collection/collection';
-import { Builder } from './pages/builder/builder';
+import { Collection } from './features/collection/collection';
+import { Builder } from './features/builder/builder';
 
 /**
  * THE ROUTE TABLE.

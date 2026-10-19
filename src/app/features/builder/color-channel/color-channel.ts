@@ -1,7 +1,7 @@
 import { Component, computed, input, output, signal } from '@angular/core';
-import { ColorChannelState } from '../../models/loadout.model';
-import { PALETTES, PALETTE_NAMES } from '../../data/palettes.data';
-import { PaletteGrid } from '../palette-grid/palette-grid';
+import { ColorChannelState } from '../../../core/models/loadout.model';
+import { PALETTES, PALETTE_NAMES } from '../../../data/palettes.data';
+import { PaletteGrid } from '../../../shared/palette-grid/palette-grid';
 
 /**
  * COMPOSITE COMPONENT — repeats 8x (once per channel: Primary,

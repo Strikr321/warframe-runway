@@ -1,11 +1,11 @@
 import {
   Component, ElementRef, HostListener, ViewChild, computed, inject, input, signal,
 } from '@angular/core';
-import { Attachments, CHANNELS, ChannelKey, ColorChannelState, LOADOUT_FIELDS } from '../../models/loadout.model';
-import { LAYOUTS, LAYOUT_KEYS, PosterLayout } from '../../data/layouts.data';
-import { PALETTES, PALETTE_NAMES } from '../../data/palettes.data';
-import { PaletteGrid } from '../palette-grid/palette-grid';
-import { ToastService } from '../../shared/toast/toast.service';
+import { Attachments, CHANNELS, ChannelKey, ColorChannelState, LOADOUT_FIELDS } from '../../../core/models/loadout.model';
+import { LAYOUTS, LAYOUT_KEYS, PosterLayout } from '../../../data/layouts.data';
+import { PALETTES, PALETTE_NAMES } from '../../../data/palettes.data';
+import { PaletteGrid } from '../../../shared/palette-grid/palette-grid';
+import { ToastService } from '../../../shared/toast/toast.service';
 
 interface SourceCrop { srcX: number; srcY: number; srcW: number; srcH: number; }
 interface PosterColor { hex: string; label: string; }

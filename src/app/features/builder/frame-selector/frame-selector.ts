@@ -1,5 +1,5 @@
 import { Component, input, output } from '@angular/core';
-import { FRAMES } from '../../models/loadout.model';
+import { FRAMES } from '../../../core/models/loadout.model';
 
 /**
  * DUMB DISPLAY + EVENT COMPONENT.

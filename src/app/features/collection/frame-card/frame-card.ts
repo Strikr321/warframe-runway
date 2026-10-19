@@ -1,5 +1,5 @@
 import { Component, computed, input, output, signal } from '@angular/core';
-import { Loadout, MAX_LOADOUTS_PER_FRAME } from '../../models/loadout.model';
+import { Loadout, MAX_LOADOUTS_PER_FRAME } from '../../../core/models/loadout.model';
 
 /**
  * THE card — rendered up to 64 times by one @for loop in the page.

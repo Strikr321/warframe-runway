@@ -1,12 +1,12 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { Loadout } from '../../models/loadout.model';
-import { LoadoutService } from '../../services/loadout.service';
-import { FrameCatalogService } from '../../services/frame-catalog.service';
-import { StatsBanner } from '../../components/stats-banner/stats-banner';
-import { RecentRow } from '../../components/recent-row/recent-row';
-import { ControlsBar, ViewMode, ChipFilter } from '../../components/controls-bar/controls-bar';
-import { FrameCard } from '../../components/frame-card/frame-card';
+import { Loadout } from '../../core/models/loadout.model';
+import { LoadoutService } from '../../core/services/loadout.service';
+import { FrameCatalogService } from '../../core/services/frame-catalog.service';
+import { StatsBanner } from './stats-banner/stats-banner';
+import { RecentRow } from './recent-row/recent-row';
+import { ControlsBar, ViewMode, ChipFilter } from './controls-bar/controls-bar';
+import { FrameCard } from './frame-card/frame-card';
 import { ToastService } from '../../shared/toast/toast.service';
 
 /**

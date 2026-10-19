@@ -1,6 +1,6 @@
 import { Component, input, output } from '@angular/core';
-import { Loadout } from '../../models/loadout.model';
-import { TimeAgoPipe } from '../../pipes/time-ago.pipe';
+import { Loadout } from '../../../core/models/loadout.model';
+import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
 
 /**
  * Step 5 addition: `highlightedFrame` lets the page tell this row when

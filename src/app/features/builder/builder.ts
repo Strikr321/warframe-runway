@@ -3,13 +3,13 @@ import { ActivatedRoute, Router } from '@angular/router';
 import {
   Attachments, ChannelKey, ColorChannelState, CHANNELS,
   Loadout, MAX_LOADOUTS_PER_FRAME, defaultColorState, emptyAttachments, summaryColors,
-} from '../../models/loadout.model';
-import { LoadoutService } from '../../services/loadout.service';
-import { FrameCatalogService } from '../../services/frame-catalog.service';
-import { FrameSelector } from '../../components/frame-selector/frame-selector';
-import { LoadoutForm } from '../../components/loadout-form/loadout-form';
-import { ColorChannel } from '../../components/color-channel/color-channel';
-import { PosterCanvas } from '../../components/poster-canvas/poster-canvas';
+} from '../../core/models/loadout.model';
+import { LoadoutService } from '../../core/services/loadout.service';
+import { FrameCatalogService } from '../../core/services/frame-catalog.service';
+import { FrameSelector } from './frame-selector/frame-selector';
+import { LoadoutForm } from './loadout-form/loadout-form';
+import { ColorChannel } from './color-channel/color-channel';
+import { PosterCanvas } from '../poster/poster-canvas/poster-canvas';
 
 /**
  * THE BUILDER — Step 4b added the Poster Generator. This delivery
