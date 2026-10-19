@@ -9,13 +9,7 @@ import { LoadoutForm } from './loadout-form/loadout-form';
 import { ColorChannel } from './color-channel/color-channel';
 import { PosterCanvas } from '../poster/poster-canvas/poster-canvas';
 
-/**
- * THE BUILDER — Step 4b added the Poster Generator. This delivery
- * swaps the hardcoded FRAMES import for FrameCatalogService's live,
- * fetched list — the Frame Selector now shows whatever the catalog
- * currently has (including anything newly released), not a frozen
- * snapshot from when this file was written.
- */
+/** Create or edit a loadout (`/builder`, `/builder/:id`, `/builder?frame=X`) and generate its poster. */
 @Component({
   selector: 'app-builder',
   imports: [FrameSelector, LoadoutForm, ColorChannel, PosterCanvas],

@@ -14,20 +14,12 @@ import { PhotoPosterRenderer } from '../engine/photo-renderer';
 import { detectTransparency, tryRemoveMonochromeBackground } from '../engine/chroma-key';
 
 /**
- * THE POSTER GENERATOR — Step 4b.
- * ================================
- * This is a leaf component: it receives the loadout's CONTENT
- * (frame, name, creator, attachments, colorState) as inputs from
- * Builder, but owns all of its OWN state itself — the uploaded
- * screenshot, crop/zoom/pan, chosen layout, background colors. None
- * of that is loadout data worth saving; it's ephemeral, one-time
- * rendering state, so it correctly lives here and nowhere else.
+ * Poster generator UI: image upload and background removal, crop controls,
+ * layout and color pickers, and export. Rendering lives in ../engine; this
+ * component snapshots its state into a PosterInput and hands it off.
  *
- * Structure mirrors the prototype's own module breakdown almost
- * exactly (see the section comments below) — this was originally a
- * single 1,800-line script; here it's the same logic, organized the
- * same way, just reading component signals instead of
- * document.getElementById().
+ * Upload, crop, and poster colors are deliberately not part of the saved
+ * loadout; they are one-off rendering state.
  */
 @Component({
   selector: 'app-poster-canvas',
@@ -36,16 +28,14 @@ import { detectTransparency, tryRemoveMonochromeBackground } from '../engine/chr
   styleUrl: './poster-canvas.css',
 })
 export class PosterCanvas {
-  // ── Content coming down from Builder (read-only here) ──────
+  // ── Loadout content from Builder ───────────────────────────
   frame = input.required<string>();
   name = input.required<string>();
   creator = input.required<string>();
   attachments = input.required<Attachments>();
   colorState = input.required<Record<ChannelKey, ColorChannelState>>();
 
-  // ── DOM handles (canvas/image work needs real measurements —
-  //    the one place in this app where direct DOM access is the
-  //    right tool, not a shortcut around Angular) ──────────────
+  // ── DOM handles (preview positioning needs real pixel sizes) ──
   @ViewChild('uploadZone') uploadZoneRef!: ElementRef<HTMLDivElement>;
   @ViewChild('previewImg') previewImgRef!: ElementRef<HTMLImageElement>;
   @ViewChild('fileInput') fileInputRef!: ElementRef<HTMLInputElement>;
@@ -64,12 +54,9 @@ export class PosterCanvas {
 
   hasImage = computed(() => this.imageDataUrl() !== null);
 
-  // ── Auto-detected mode (new) ──────────────────────────────────
-  // null = no image yet. true = real alpha transparency found (a
-  // background-removed cutout) -> full-bleed rendering. false = fully
-  // opaque (a raw screenshot) -> the existing crop/mask rendering.
-  // A person can override this via modeOverride; when set, it wins
-  // over the detected value.
+  // ── Render mode ───────────────────────────────────────────────
+  // detectedTransparent: null = no image, true = cutout (full-bleed engine),
+  // false = opaque screenshot (photo engine). modeOverride wins when set.
   detectedTransparent = signal<boolean | null>(null);
   modeOverride = signal<boolean | null>(null);
   isTransparentMode = computed(() => this.modeOverride() ?? this.detectedTransparent());
@@ -78,16 +65,9 @@ export class PosterCanvas {
     this.modeOverride.set(!this.isTransparentMode());
   }
 
-  // ── Monochrome background removal (new) ─────────────────────
-  // When an opaque screenshot turns out to have a solid-color
-  // backdrop (Captura green screen, or any uniform color), we key it
-  // out ONCE at upload time and keep BOTH versions, so the person can
-  // flip between the keyed cutout and the untouched original.
-  // bgRemovalOn = the keyed version is currently active. Keying at
-  // upload (not at render) means everything downstream —
-  // detectTransparency semantics, trimTransparentBounds,
-  // dominantHueColor, all four layouts — inherits it unchanged; the
-  // same "fix it in one place" pattern as LoadoutService.
+  // ── Background removal ────────────────────────────────────────
+  // A solid backdrop is keyed out once at upload; both versions are kept
+  // so the user can flip back to the original.
   originalImageDataUrl = signal<string | null>(null);
   keyedImageDataUrl = signal<string | null>(null);
   bgRemovalOn = signal(false);
@@ -106,9 +86,7 @@ export class PosterCanvas {
     setTimeout(() => this.updatePreview(), 0);
   }
 
-  // Preview positioning — recomputed imperatively (see updatePreview())
-  // because it depends on the live pixel size of the upload zone,
-  // something only the real DOM can tell us.
+  // Set by updatePreview() from the upload zone's live pixel size.
   previewStyle = signal<{ width: string; height: string; left: string; top: string }>({ width: '0', height: '0', left: '0', top: '0' });
   cropOverlay = signal<{ leftDark: number; rightDarkLeft: number; rightDarkWidth: number; lineLeft: number; lineRight: number; zoneH: number } | null>(null);
 
@@ -157,8 +135,7 @@ export class PosterCanvas {
     if (file) this.loadImage(file);
   }
 
-  // Clipboard paste works anywhere on the page while the Builder is open —
-  // matches the prototype's global paste listener.
+  // Paste works anywhere on the page while the Builder is open.
   @HostListener('document:paste', ['$event'])
   onPaste(e: ClipboardEvent) {
     const items = e.clipboardData?.items;
@@ -184,9 +161,7 @@ export class PosterCanvas {
         this.resetSliders();
         this.modeOverride.set(null); // a new image gets a fresh auto-detection, not the last image's override
 
-        // Clear any previous image's keying state — these belong to
-        // the OLD upload; carrying them over would let a stale
-        // "use original" restore the wrong picture.
+        // Reset keying state so "use original" can't restore the previous upload.
         this.originalImageDataUrl.set(null);
         this.keyedImageDataUrl.set(null);
         this.bgRemovalOn.set(false);
@@ -198,7 +173,7 @@ export class PosterCanvas {
           this.detectedTransparent.set(true);
           this.showToast('Cutout detected — full-bleed render');
         } else {
-          // Opaque — but is it a solid-color backdrop we can key out?
+          // Opaque: try keying out a solid backdrop.
           const keyed = tryRemoveMonochromeBackground(img);
           if (keyed) {
             this.originalImageDataUrl.set(dataUrl);
@@ -214,7 +189,7 @@ export class PosterCanvas {
             this.showToast('Screenshot loaded — adjust zoom & pan below');
           }
         }
-        // Wait a tick for the preview <img> to actually exist in the DOM
+        // Wait a tick for the preview <img> to render.
         setTimeout(() => this.updatePreview(), 0);
       };
       img.src = dataUrl;
@@ -239,12 +214,7 @@ export class PosterCanvas {
     this.updatePreview();
   }
 
-  /**
-   * Positions the live preview <img> and crop-overlay rectangles.
-   * Same math as the prototype's updatePreview() — this is the part
-   * that genuinely needs real pixel measurements from the DOM, so it
-   * stays imperative rather than a pure computed().
-   */
+  /** Positions the preview <img> and crop overlay; needs live DOM measurements. */
   private updatePreview() {
     if (!this.imageNaturalWidth() || !this.uploadZoneRef) return;
     const zone = this.uploadZoneRef.nativeElement;
@@ -280,12 +250,7 @@ export class PosterCanvas {
     });
   }
 
-  /**
-   * Reconstructs the crop rectangle in the SOURCE image's own pixel
-   * coordinates, using the exact same scale/pan math as the preview.
-   * This is what makes "what you see is what you get" true: the
-   * poster crops exactly what the preview showed.
-   */
+  /** The preview's visible crop, mapped back to source-image pixels (same math as updatePreview). */
   private computeSourceCrop(imgW: number, imgH: number): SourceCrop | null {
     const zone = this.uploadZoneRef.nativeElement;
     const controls = this.imgControlsRef?.nativeElement;
@@ -322,7 +287,7 @@ export class PosterCanvas {
   }
 
   // ═══════════════════════════════════════════════════════════
-  // POSTER BACKGROUND COLOR PICKER (reuses PaletteGrid)
+  // POSTER BACKGROUND COLORS
   // ═══════════════════════════════════════════════════════════
 
   openColorPicker(target: 1 | 2) {
@@ -346,20 +311,22 @@ export class PosterCanvas {
     this.closeColorPicker();
   }
 
-  /** Which color sits at the edges vs. the glow peak — same two slots regardless of mode. */
+  /** Swaps which color sits at the edges and which glows. */
   bgSwapped = signal(false);
   toggleBgSwap() {
     this.bgSwapped.update(v => !v);
   }
 
-  /** Clears any manual color pick(s), returning to auto-detection. */
+  /** Back to the auto-detected glow color. */
   resetBgToAuto() {
     this.posterColor1.set(null);
     this.posterColor2.set(null);
     this.bgSwapped.set(false);
   }
 
-  // ── Sizing helpers ───────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════
+  // RENDER
+  // ═══════════════════════════════════════════════════════════
 
   async generatePoster() {
     const canvas = this.canvasRef.nativeElement;
@@ -373,7 +340,7 @@ export class PosterCanvas {
     this.showToast('Poster generated!');
   }
 
-  /** Freezes everything the renderers need, so the engine never touches component state. */
+  /** Everything the renderers need, captured once so the engine never reads component state. */
   private snapshotInput(): PosterInput {
     const imageDataUrl = this.imageDataUrl();
     return {

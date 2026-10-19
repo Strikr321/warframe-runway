@@ -8,18 +8,12 @@
  */
 
 /**
- * Reads the image's real alpha channel to decide which rendering
- * pipeline fits — not just "is this a PNG" (opaque PNGs are common),
- * but "does a meaningful fraction of it actually vary in opacity."
- * A handful of stray semi-transparent pixels (compression artifacts,
- * anti-aliased edges) shouldn't flip an otherwise-opaque screenshot
- * into full-bleed mode, so this requires a real proportion, not just
- * any non-255 pixel at all.
+ * True when more than 3% of the image is non-opaque, i.e. it is already a
+ * cutout. A proportion, not "any alpha", so stray anti-aliased pixels don't count.
  */
 export function detectTransparency(img: HTMLImageElement): boolean {
   const cv = document.createElement('canvas');
-  // Sampling at a small fixed size is enough to answer "is there
-  // real transparency" without reading a full-resolution image.
+  // A 120px-wide sample is enough to answer this.
   const sw = 120, sh = Math.max(1, Math.round(120 * img.naturalHeight / img.naturalWidth));
   cv.width = sw; cv.height = sh;
   const ctx = cv.getContext('2d', { willReadFrequently: true })!;
@@ -34,12 +28,9 @@ export function detectTransparency(img: HTMLImageElement): boolean {
 }
 
 /**
- * Samples a thin border ring and decides whether it's a uniform
- * backdrop. Uses "fraction of samples near the mean" rather than
- * pure std-dev, so a limb or syandana poking into the border doesn't
- * veto an otherwise-obvious green screen. Verified: 100% uniformity
- * on a real Captura green screen; a normal busy in-game scene fails
- * the 92% bar.
+ * Returns the backdrop color if a thin border ring is uniform (>= 92% of
+ * samples near the mean), else null. A fraction rather than std-dev, so a
+ * limb or syandana crossing the border doesn't veto a real green screen.
  */
 export function detectMonochromeBackground(
   data: Uint8ClampedArray, width: number, height: number,
@@ -75,33 +66,23 @@ export function detectMonochromeBackground(
 }
 
 /**
- * Keys the backdrop out of the pixel data in place.
+ * Keys the backdrop out of the pixel data in place; returns the fraction
+ * of pixels fully removed.
  *
- * SATURATED keys (green screen etc.) get chroma UNMIXING, not binary
- * keying. Model: observed = alpha*foreground + (1-alpha)*key. Each
- * pixel's backdrop fraction is estimated from how much of the key's
- * channel signature it carries (Vlahos-style), then the key's
- * contribution is SUBTRACTED from the color and the alpha reduced to
- * match. This is what handles semi-transparent content — ephemera
- * smoke and cape frays captured with green showing THROUGH them.
- * Binary keying (round 1) left those as solid green-tinted patches
- * around Harrow's crown: the pixels weren't green enough to remove
- * but were too green to keep. Unmixing turns them back into purple
- * smoke at partial alpha. Verified by rendering against the real
- * green-screen Harrow (86.2% fully removed, 1.9% unmixed) and
- * comparing crown/cape crops against the original at 2x.
+ * Saturated keys (green screen) use chroma unmixing rather than binary
+ * keying. Model: observed = alpha*fg + (1-alpha)*key. Each pixel's backdrop
+ * fraction comes from how much of the key's dominant-channel excess it
+ * carries (Vlahos-style); that share of the key is subtracted and alpha
+ * reduced to match. This recovers semi-transparent smoke and cape edges
+ * that binary keying leaves as green-tinted patches.
  *
- * Known limit, accepted deliberately: a pixel where the key blended
- * into a hue on the FAR side of it (green into blue -> cyan) is
- * mathematically indistinguishable from genuinely cyan foreground —
- * single-color keying is underdetermined there; compositors solve it
- * with garbage mattes, not math. At poster scale these read as rim
- * lighting, which Harrow's ephemera genuinely has anyway.
+ * Known limit: key blended into a hue beyond it (green into blue = cyan) is
+ * indistinguishable from real cyan foreground; at poster scale it reads as
+ * rim light.
  *
- * NEUTRAL keys (white/grey/black backdrops) have no channel
- * signature to unmix against, so they fall back to distance keying
- * with a smoothstep feather; dark keys get tighter tolerances so
- * near-black armor is never mistaken for a near-black backdrop.
+ * Neutral keys (white/grey/black) have no channel signature, so they use
+ * distance keying with a smoothstep feather, tighter for dark keys so
+ * near-black armor survives.
  */
 export function keyOutBackground(
   data: Uint8ClampedArray, width: number, height: number,
@@ -158,11 +139,9 @@ export function keyOutBackground(
 }
 
 /**
- * Orchestrator: full-res scan -> detect -> key -> re-encode.
- * Returns null when there's no uniform backdrop (a normal
- * screenshot) or when keying removed implausibly little — a
- * defensive floor, since a real backdrop is a meaningful share of
- * the image (91.5% on the verified test shot).
+ * Detect and key out a solid backdrop at full resolution. Returns null for
+ * a normal screenshot, or if keying removed under 15% of the image (too
+ * little to be a real backdrop).
  */
 export function tryRemoveMonochromeBackground(
   img: HTMLImageElement,

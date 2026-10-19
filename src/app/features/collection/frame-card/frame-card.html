@@ -38,14 +38,9 @@
     </div>
   </div>
 
-  <!-- Card action buttons — count-dependent, see frame-card.ts atCap/isEmpty.
-       These are siblings of .frame-card (not nested inside it), same as
-       the fan-ring and mini-cards below: .frame-card sets its own
-       z-index, which would trap anything nested inside it in a LOWER
-       stacking layer than a true sibling — so a button nested inside
-       could never reliably out-rank a fan-mini card next to it,
-       regardless of its own z-index value. Keeping them as wrapper-level
-       siblings makes every z-index comparison direct and honest. -->
+  <!-- Action buttons are siblings of .frame-card, not children: .frame-card
+       creates its own stacking context, which would trap them below the
+       fan-out mini-cards. -->
   @if (isEmpty) {
     <div class="card-btn pos-br" (click)="onCreateClick($event)" title="Create loadout for {{ frame() }}">+</div>
   } @else if (loadouts().length === 1 && first) {
@@ -55,9 +50,7 @@
     <div class="card-btn pos-center" (click)="onCreateClick($event)" title="Add another loadout">+</div>
   }
 
-  <!-- Fan-out: guide ring + one mini-card per loadout, always mounted
-       (not created/destroyed per hover) so the transform/opacity
-       transitions are ordinary CSS transitions, not a re-creation. -->
+  <!-- Mini-cards stay mounted so hover only changes styles and CSS transitions animate. -->
   @if (loadouts().length >= 2) {
     <div
       class="fan-ring"

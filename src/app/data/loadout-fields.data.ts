@@ -1,6 +1,6 @@
 import { Attachments } from '../core/models/loadout.model';
 
-/** One row in the Loadout form — label + hint ported from the prototype. */
+/** Rows of the Loadout form, in display order. */
 export const LOADOUT_FIELDS: { key: keyof Attachments; label: string; hint: string }[] = [
   { key: 'skin',     label: 'Skin',     hint: 'Body appearance' },
   { key: 'helmet',   label: 'Helmet',   hint: 'Head' },

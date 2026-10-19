@@ -2,38 +2,21 @@ import { Injectable, effect, signal } from '@angular/core';
 import { Loadout, MAX_LOADOUTS_PER_FRAME } from '../models/loadout.model';
 
 /**
- * THE ONE BRAIN.
- * ==============
- * The single owner of all loadout data in the app. Pages inject it;
- * child components never see it (they get data via inputs).
- *
- * @Injectable({ providedIn: 'root' }) = Angular creates exactly ONE
- * instance for the whole app and hands that same instance to anyone
- * who asks (dependency injection). Collection and Builder therefore
- * always agree on the data, because it literally IS the same object.
- *
- * Persistence today: localStorage (survives refresh, lives in this
- * browser only). In Step 7 the bodies of these methods become HTTP
- * calls to Spring Boot — and NOTHING outside this file changes.
- * That is the entire reason this class exists.
+ * Single owner of loadout data. Pages inject it; child components receive
+ * data through inputs. Persists to localStorage today; this is the one file
+ * that changes when persistence moves to the Spring Boot API.
  */
 @Injectable({ providedIn: 'root' })
 export class LoadoutService {
   /** Versioned key: if the data shape ever changes, bump v1 → v2. */
   private static readonly STORAGE_KEY = 'warframe-runway.loadouts.v1';
 
-  /**
-   * The source of truth. Private-writable, public-readable:
-   * outsiders get `.asReadonly()` so ALL writes must go through the
-   * methods below — one door in, easy to reason about.
-   */
+  /** Writable only through the methods below. */
   private readonly _loadouts = signal<Loadout[]>(this.loadFromStorage());
   readonly loadouts = this._loadouts.asReadonly();
 
   constructor() {
-    // effect() re-runs whenever a signal it reads changes.
-    // Any write to _loadouts → automatically persisted. No component
-    // ever has to remember to call save(). Forgetting is impossible.
+    // Persist on every change.
     effect(() => {
       localStorage.setItem(LoadoutService.STORAGE_KEY, JSON.stringify(this._loadouts()));
     });
@@ -48,18 +31,13 @@ export class LoadoutService {
     return this._loadouts().find(l => l.id === id);
   }
 
-  /** False once a frame already has MAX_LOADOUTS_PER_FRAME — editing an
-   *  EXISTING loadout is always fine; this only gates creating a new one. */
+  /** Gates creating a new loadout; editing an existing one is always allowed. */
   canAddLoadout(frame: string): boolean {
     return this.byFrame(frame).length < MAX_LOADOUTS_PER_FRAME;
   }
 
-  // ── Writes (the only door) ────────────────────────────────
-  /**
-   * Create or update. Returns false (and refuses to save) if this
-   * would be a brand-new loadout past the per-frame cap — editing an
-   * existing one always succeeds regardless of how many that frame has.
-   */
+  // ── Writes ────────────────────────────────────────────────
+  /** Create or update. Returns false if a new loadout would exceed the per-frame cap. */
   save(loadout: Loadout): boolean {
     const isNew = !this._loadouts().some(l => l.id === loadout.id);
     if (isNew && !this.canAddLoadout(loadout.frame)) return false;
@@ -87,13 +65,12 @@ export class LoadoutService {
       const raw = localStorage.getItem(LoadoutService.STORAGE_KEY);
       return raw ? (JSON.parse(raw) as Loadout[]) : [];
     } catch {
-      // Corrupt/unparseable data shouldn't crash the app on boot.
+      // Corrupt data shouldn't crash the app on boot.
       return [];
     }
   }
 
-  // ── Demo seed (until the Builder exists) ──────────────────
-  /** Fills storage with sample loadouts so there's something to look at. */
+  // ── Demo data ─────────────────────────────────────────────
   seedDemo(): void {
     const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
     this._loadouts.set([
@@ -111,7 +88,6 @@ export class LoadoutService {
     ]);
   }
 
-  /** Wipe everything — handy while developing. */
   clearAll(): void {
     this._loadouts.set([]);
   }

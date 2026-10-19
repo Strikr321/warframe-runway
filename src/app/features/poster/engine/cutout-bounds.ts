@@ -1,19 +1,12 @@
 /**
- * Trims excess transparent padding around a cutout — but bounded by
- * CONNECTED COMPONENTS, not by every last visible pixel. Why: a
- * one-sided ephemera (Mesa's Conquera) leaves tiny opaque sparks and
- * faint wisps drifting far from the body. Counting any alpha>10
- * pixel let a single 59px spark drag the box edge 150px right,
- * off-centering the whole poster (box center 1123 vs the body's real
- * 1086 on the verified Mesa shot). Alternatives measured and
- * rejected: a higher alpha threshold misses opaque sparks; trimming
- * by alpha-mass percentile clips thin-but-solid geometry (Ash's horn
- * tips). Connectivity is the property that actually separates them:
- * horns are thin but ATTACHED, sparks are islands. So: label
- * components (4-neighbor BFS), keep every component at least 0.5% the
- * size of the largest (protects real pieces if keying ever splits
- * one), and take the union of their bounds. Verified across Mesa,
- * Harrow, and Ash: Mesa recenters, the other two are unchanged.
+ * Bounding box of a cutout, ignoring detached specks.
+ *
+ * Ephemera can leave small opaque sparks far from the body; counting every
+ * visible pixel lets one spark pull the box sideways and off-center the
+ * poster. A higher alpha threshold misses opaque sparks, and percentile
+ * trimming clips thin attached geometry like horn tips. Connectivity is what
+ * separates them, so: label connected components (4-neighbour BFS), keep any
+ * at least 0.5% the size of the largest, and union their bounds with 2.5% padding.
  */
 export function trimTransparentBounds(imgData: ImageData): { x: number; y: number; w: number; h: number } {
   const { data, width, height } = imgData;

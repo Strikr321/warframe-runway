@@ -14,8 +14,7 @@ export class PhotoPosterRenderer {
   constructor(private readonly canvas: HTMLCanvasElement, private readonly input: PosterInput) {}
 
   async render(): Promise<void> {
-    // Wait for fonts so the very first render doesn't fall back to
-    // the system default before Cinzel finishes loading.
+    // Fonts must be loaded or the first render falls back to the system font.
     await document.fonts.ready;
 
     const cv = this.canvas;
@@ -177,7 +176,7 @@ export class PhotoPosterRenderer {
     const c1 = this.input.posterColor1?.hex ?? '#3a0808';
     const c2 = this.input.posterColor2?.hex ?? '#080202';
 
-    const angle = 180 * Math.PI / 180; // fixed - the angle slider was removed; this old function is superseded by drawAtmosphereBg anyway
+    const angle = 180 * Math.PI / 180; // vertical
     const mx = W / 2, my = H / 2;
     const len = Math.max(W, H);
     const x1 = mx - Math.sin(angle) * len / 2;

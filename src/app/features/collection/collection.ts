@@ -10,21 +10,8 @@ import { FrameCard } from './frame-card/frame-card';
 import { ToastService } from '../../shared/toast/toast.service';
 
 /**
- * STEP 5 CHANGE: `hoveredFrame` is the shared signal that links the
- * Recently Edited row to the Collection grid in both directions —
- * hover either one and both the matching grid card (fan-out + glow)
- * and the matching Recently Edited card (glow) light up together.
- * Neither child component knows about the other; they only know
- * about this one shared piece of state on the page, which is the
- * whole "smart page, dumb pieces" idea paying off again.
- *
- * Empty frame cards are now clickable too (FrameCard.createRequested),
- * and any card can spawn an ADDITIONAL loadout for its frame even once
- * it already has one, up to the 6-loadout cap.
- *
- * This delivery: `frames` now comes from FrameCatalogService (a live
- * fetch, cached daily) instead of the hardcoded FRAMES constant — the
- * grid genuinely grows when Digital Extremes ships a new frame.
+ * The frame grid, stats, and Recently Edited row. `hoveredFrame` links the
+ * grid and the Recently Edited row so hovering either highlights both.
  */
 @Component({
   selector: 'app-collection',
@@ -85,20 +72,16 @@ export class Collection {
   }
 
   // ── Navigation ────────────────────────────────────────────
-  /** Open one specific loadout by id — from a card's cover, or from
-   *  clicking a specific fanned-out mini-card. */
   openLoadoutById(id: string) {
     this.router.navigate(['/builder', id]);
   }
 
-  /** Create a new loadout for this frame — from an empty card, the
-   *  "+" on a populated card, or the generic New Loadout tile. */
   createForFrame(frame?: string) {
     if (frame) this.router.navigate(['/builder'], { queryParams: { frame } });
     else this.router.navigate(['/builder']);
   }
 
-  // ── Hover linking (Recently Edited <-> grid, both directions) ──
+  // ── Hover linking ─────────────────────────────────────────
   onFrameHover(frame: string, on: boolean) {
     this.hoveredFrame.set(on ? frame : null);
   }
@@ -115,7 +98,7 @@ export class Collection {
     this.store.toggleFav(l.id);
   }
 
-  // ── Demo data controls (temporary until real usage builds up) ──
+  // ── Demo data ─────────────────────────────────────────────
   seedDemo() {
     this.store.seedDemo();
     this.toast.show('Sample loadouts loaded');

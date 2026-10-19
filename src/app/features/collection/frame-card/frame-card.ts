@@ -2,23 +2,8 @@ import { Component, computed, input, output, signal } from '@angular/core';
 import { Loadout, MAX_LOADOUTS_PER_FRAME } from '../../../core/models/loadout.model';
 
 /**
- * THE card — rendered up to 64 times by one @for loop in the page.
- * The textbook reason a component exists: it REPEATS. Fix the tilt
- * math here once and every card on screen is fixed.
- *
- * Step 5 addition: cards with 2+ loadouts fan their mini-cards out in
- * a circle on hover (1 flat, 2 up/down, 3 triangle, 4 square, 5
- * pentagon, 6 hexagon — MAX_LOADOUTS_PER_FRAME caps it there). A
- * shared `highlighted` input lets the Collection page link this card
- * to its Recently Edited counterpart in both directions.
- *
- * The fan-out is entirely template-bound (no imperative DOM code):
- * @for keeps the mini-cards permanently mounted, keyed by loadout id,
- * so toggling `fanned` only ever changes a bound style property on
- * elements that already exist — a completely normal CSS transition,
- * the same as everything else in this app. There's no "newly created
- * element with no previous frame to animate from" problem to work
- * around, because nothing is created or destroyed by hovering.
+ * One frame in the Collection grid: 3D tilt on hover, and with 2+ loadouts
+ * the mini-cards fan out as a regular polygon.
  */
 @Component({
   selector: 'app-frame-card',
@@ -29,21 +14,16 @@ import { Loadout, MAX_LOADOUTS_PER_FRAME } from '../../../core/models/loadout.mo
 export class FrameCard {
   frame = input.required<string>();
   loadouts = input.required<Loadout[]>();
-  /** Show the count badge? (on in By-Warframe view, off in By-Loadout view) */
+  /** Count badge; shown in By-Warframe view only. */
   badge = input<boolean>(true);
-  /** Driven by the page's shared hoveredFrame signal — true when THIS
-   *  frame is highlighted from the Recently Edited row (or vice versa). */
+  /** True when the matching Recently Edited card is hovered. */
   highlighted = input<boolean>(false);
 
-  /** Open a specific loadout — the id, whether from the card body
-   *  (the "cover"/first loadout) or from clicking a specific fanned
-   *  mini-card. One output, always a concrete id, no ambiguity. */
+  /** Loadout id to open: the first loadout from the card body, or a specific mini-card. */
   openLoadout = output<string>();
-  /** "+" clicked, or an empty card clicked — create a new loadout for this frame. */
+  /** "+" or an empty card was clicked. */
   createRequested = output<void>();
   toggleFav = output<void>();
-  /** Tells the page this card is being hovered, so it can highlight
-   *  the matching Recently Edited card too. */
   hoverChange = output<boolean>();
 
   get isEmpty(): boolean { return this.loadouts().length === 0; }
@@ -51,7 +31,7 @@ export class FrameCard {
   get hasFav(): boolean { return this.loadouts().some(l => l.fav); }
   get atCap(): boolean { return this.loadouts().length >= MAX_LOADOUTS_PER_FRAME; }
 
-  // ── 3D tilt (unchanged from Step 2) ──────────────────────────
+  // ── 3D tilt ──────────────────────────────────────────────────
   rotX = 0;
   rotY = 0;
   glossX = 50;
@@ -77,8 +57,7 @@ export class FrameCard {
   }
   onLeave() { this.hovering = false; }
 
-  // ── Fan-out (new in Step 5) — entirely template-driven, see the
-  // class doc comment above for why no imperative DOM code is needed.
+  // ── Fan-out ──────────────────────────────────────────────────
   fanned = signal(false);
 
   /** 1 flat, 2 up/down, 3 triangle, 4 square, 5 pentagon, 6 hexagon. */
@@ -100,8 +79,7 @@ export class FrameCard {
     return pts;
   });
 
-  /** Transform for mini-card at index i — spread position when fanned,
-   *  shrunk to center otherwise. Read directly from the template. */
+  /** Mini-card transform: spread when fanned, shrunk to center otherwise. */
   miniTransform(i: number): string {
     if (!this.fanned()) return 'translate(-50%,-50%) scale(.4)';
     const p = this.positions()[i];

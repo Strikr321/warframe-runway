@@ -3,16 +3,7 @@ import { ColorChannelState } from '../../../core/models/loadout.model';
 import { PALETTES, PALETTE_NAMES } from '../../../data/palettes.data';
 import { PaletteGrid } from '../../../shared/palette-grid/palette-grid';
 
-/**
- * COMPOSITE COMPONENT — repeats 8x (once per channel: Primary,
- * Secondary, Energy I...). Each instance owns its own "is this
- * expanded" state locally (that's UI state, not data, so a plain
- * signal here is correct — it doesn't belong in the service).
- *
- * Wraps PaletteGrid, which is why PaletteGrid gets reused rather than
- * copy-pasted: the same grid also could power a poster background
- * picker later (Step 4b) without writing it twice.
- */
+/** One color channel row (Primary, Energy I, ...) with an expandable palette picker. */
 @Component({
   selector: 'app-color-channel',
   imports: [PaletteGrid],

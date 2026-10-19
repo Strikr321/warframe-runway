@@ -25,8 +25,7 @@
   background: linear-gradient(135deg, rgba(200, 149, 42, .12), rgba(20, 8, 8, .9));
 }
 
-/* Lit up when the matching Collection card is hovered (or this card
-   itself is hovered, which fans out the matching Collection card) */
+/* Highlighted from the Collection grid */
 .recent-card.linked {
   border-color: var(--gold-light);
   box-shadow: 0 0 16px rgba(240, 192, 80, .35);

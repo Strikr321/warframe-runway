@@ -167,12 +167,7 @@
 }
 .palette-select:focus { border-color: var(--gold); }
 
-/* ═══════════════════════════════════════════════════════════
-   MONOCHROME BACKGROUND REMOVAL — append to the END of
-   src/app/components/poster-canvas/poster-canvas.css
-   (this is an addition, not a replacement — your existing CSS
-   file stays as it is, just paste this at the bottom)
-   ═══════════════════════════════════════════════════════════ */
+/* ── Background removal badge ── */
 
 .upload-tip {
   margin-top: 10px;

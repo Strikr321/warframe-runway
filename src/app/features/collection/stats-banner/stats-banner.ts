@@ -1,14 +1,6 @@
 import { Component, input } from '@angular/core';
 
-/**
- * DUMB DISPLAY COMPONENT.
- * Receives already-computed numbers via inputs and renders them.
- * It calculates nothing and fetches nothing — that's the page's job.
- *
- * `input()` creates a signal-based @Input. Read it in the template
- * with parentheses: styled().  `.required` = the parent MUST provide it
- * or the compiler complains.
- */
+/** Frames styled, total loadouts, and favorites. */
 @Component({
   selector: 'app-stats-banner',
   imports: [],

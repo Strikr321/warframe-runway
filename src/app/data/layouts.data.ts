@@ -14,11 +14,7 @@ export interface PosterLayout {
   render: LayoutRenderConfig;
 }
 
-/**
- * The 4 poster layouts, ported verbatim from the prototype's LAYOUTS
- * object. `thumb` positions the little preview rectangles in the
- * layout picker; `render` drives the actual canvas math.
- */
+/** Poster layouts. `thumb` draws the picker preview; `render` drives the canvas layout. */
 export const LAYOUTS: Record<string, PosterLayout> = {
   'left-classic': {
     key: 'left-classic',

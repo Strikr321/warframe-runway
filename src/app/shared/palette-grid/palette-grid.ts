@@ -1,11 +1,6 @@
 import { Component, computed, input, output } from '@angular/core';
 
-/**
- * THE 90-SWATCH GRID.
- * Pure display + event component, same shape as FrameCard: it repeats
- * (once per open color channel), so it earns its own file. Columns
- * are "A"-"E", rows are 1-18 — matches the naming you see in-game.
- */
+/** One in-game palette as a 5x18 swatch grid; columns A–E, rows 1–18, as named in-game. */
 @Component({
   selector: 'app-palette-grid',
   imports: [],

@@ -3,9 +3,6 @@
 
   <div class="loadout-row">
     <div class="loadout-label">Creator Name<small>Your name</small></div>
-    <!-- [value] + (input) = manual two-way binding. We could use [(ngModel)],
-         but writing it explicitly shows exactly what's happening: read the
-         input down, emit changes up. No hidden magic. -->
     <input type="text" class="loadout-input" placeholder="e.g. Tenno"
            [value]="creator()" (input)="creatorChange.emit($any($event.target).value)" />
   </div>

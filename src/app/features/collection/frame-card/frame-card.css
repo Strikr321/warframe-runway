@@ -4,8 +4,7 @@
   animation: fadeInUp .5s ease both;
 }
 
-/* Gold glow when this frame is highlighted from the Recently Edited
-   row (or vice versa) — driven by the page's shared hoveredFrame signal. */
+/* Highlighted from the Recently Edited row */
 .card-wrapper.linked .frame-card {
   border-color: var(--gold-light);
   box-shadow: 0 0 18px rgba(240, 192, 80, .35);

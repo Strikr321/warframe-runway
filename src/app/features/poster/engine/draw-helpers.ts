@@ -16,7 +16,7 @@ export function drawGoldFrame(ctx: CanvasRenderingContext2D, W: number, H: numbe
   }
 }
 
-/** Centered header text with manual letter-tracking (works in every browser, not just ones with ctx.letterSpacing). */
+/** Centered text with manual letter-spacing (ctx.letterSpacing isn't supported everywhere). */
 export function drawTrackedText(ctx: CanvasRenderingContext2D, text: string, cx: number, y: number, tracking: number) {
   const widths = Array.from(text).map(ch => ctx.measureText(ch).width);
   const total = widths.reduce((a,b) => a+b, 0) + tracking*(text.length-1);
@@ -27,7 +27,7 @@ export function drawTrackedText(ctx: CanvasRenderingContext2D, text: string, cx:
   }
 }
 
-/** "Contain" fit — same guarantee regardless of a character's proportions: never overflow EITHER dimension. */
+/** Scale to fit within maxW x maxH, preserving aspect ratio. */
 export function fitContain(bounds: {w:number;h:number}, maxH: number, maxW: number): { targetW: number; targetH: number } {
   const scale = Math.min(maxH / bounds.h, maxW / bounds.w);
   return { targetW: Math.round(bounds.w * scale), targetH: Math.round(bounds.h * scale) };

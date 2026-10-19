@@ -30,7 +30,7 @@
 }
 .create-card:hover .create-card-label { color: var(--gold); }
 
-/* ── Empty state (Step 3) ── */
+/* ── Empty state ── */
 .catalog-status {
   text-align: center;
   font-size: 10px;

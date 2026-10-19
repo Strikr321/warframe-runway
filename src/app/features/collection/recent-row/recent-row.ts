@@ -2,14 +2,7 @@ import { Component, input, output } from '@angular/core';
 import { Loadout } from '../../../core/models/loadout.model';
 import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
 
-/**
- * Step 5 addition: `highlightedFrame` lets the page tell this row when
- * a matching card in the Collection grid is being hovered, so the
- * corresponding entry here can glow too — and `hoverChange` reports
- * back the other direction, so hovering a card HERE fans out its
- * match in the grid. Same shared signal on the page, two components
- * both reading and writing it — that's the whole mechanism.
- */
+/** The four most recently edited loadouts; hover is linked with the Collection grid. */
 @Component({
   selector: 'app-recent-row',
   imports: [TimeAgoPipe],

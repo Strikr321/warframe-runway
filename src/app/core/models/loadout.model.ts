@@ -16,12 +16,8 @@ export interface Loadout {
 }
 
 /**
- * Nobody can have more than 6 loadouts for one Warframe. This isn't
- * arbitrary — the Collection card's hover fan-out is a circle (1 flat,
- * 2 up/down, 3 triangle, 4 square, 5 pentagon, 6 hexagon), and past 6
- * it stops being readable as a shape. FrameCard hides its "create
- * another" affordance once a frame hits this, and Builder refuses to
- * save a brand-new loadout past it too.
+ * Per-frame cap. The Collection card fans loadouts out as a regular
+ * polygon on hover, and past a hexagon the shape stops reading clearly.
  */
 export const MAX_LOADOUTS_PER_FRAME = 6;
 

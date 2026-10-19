@@ -22,12 +22,7 @@ export class CutoutPosterRenderer {
     }
   }
 
-  /**
-   * Shared setup for every transparent-mode layout: loads the image,
-   * reads its pixel data once, trims the silhouette bounds, extracts
-   * the accent color, and paints the atmosphere background. Every
-   * layout starts from exactly this same state.
-   */
+  /** Shared setup for every layout: size the canvas, trim the cutout, pick colors, paint the background. */
   private async setupTransparentCanvas(): Promise<{
     ctx: CanvasRenderingContext2D; W: number; H: number; rawImg: HTMLImageElement;
     bounds: { x: number; y: number; w: number; h: number };
@@ -49,13 +44,11 @@ export class CutoutPosterRenderer {
     const bounds = trimTransparentBounds(fullData);
     const autoAccent = dominantHueColor(fullData);
 
-    // Background color has exactly two slots — edge (both top and
-    // bottom) and glow (the bright peak) — regardless of mode:
+    // Two slots, edge and glow:
     //   Auto:        edge = dark neutral,  glow = auto-detected
-    //   One color:   edge = dark neutral,  glow = your color
+    //   One color:   edge = dark neutral,  glow = color1
     //   Two colors:  edge = color1,        glow = color2
-    // `bgSwapped` flips which value lands in which slot — one toggle
-    // covers every mode, since it's the same two slots either way.
+    // bgSwapped flips the slots in every mode.
     const DARK_NEUTRAL: [number,number,number] = [12, 6, 8];
     const c1 = this.input.posterColor1;
     const c2 = this.input.posterColor2;
@@ -75,13 +68,7 @@ export class CutoutPosterRenderer {
     return { ctx, W, H, rawImg, bounds, accent, deep };
   }
 
-  /**
-   * Header title/subtitle/divider, positioned from REAL measured text
-   * metrics rather than a guessed baseline — this is the exact bug
-   * that once put "WARFRAME" overlapping the frame border. One
-   * implementation used by every layout means that bug can only ever
-   * need fixing once, not four times.
-   */
+  /** Title, subtitle and divider positioned from measured text metrics. Returns the header's bottom y. */
   private drawComputedHeader(ctx: CanvasRenderingContext2D, W: number, lightTxt: [number,number,number], accentLight: [number,number,number]): number {
     const FRAME_INNER = 32, TITLE_TOP_MARGIN = 20;
     ctx.textAlign = 'left';
@@ -110,13 +97,7 @@ export class CutoutPosterRenderer {
     return { fields, colorRows };
   }
 
-  /**
-   * Draws one column of attachment/color rows, spaced to exactly fill
-   * [topY, bottomY] regardless of how many entries it holds — this is
-   * what makes a single 16-entry column (Classic Left/Right) and a
-   * split pair of 8-entry columns (Split) both look intentional
-   * instead of one being sparse or one being cramped.
-   */
+  /** One column of attachment and/or color rows, spaced to exactly fill [topY, bottomY]. */
   private drawTextColumn(
     ctx: CanvasRenderingContext2D,
     opts: {
@@ -186,13 +167,7 @@ export class CutoutPosterRenderer {
     ctx.textAlign = 'left';
   }
 
-  /**
-   * LAYOUT: Classic Left, transparent mode.
-   * Full-bleed character (no mask, no rectangle — the alpha channel
-   * IS the silhouette), atmospheric background sampled from the
-   * character's own colors, a single right-side text column sized to
-   * the real number of filled-in fields, gold outer frame.
-   */
+  /** Classic Left: character centered, one text column on the right. */
   private async generateClassicLeftTransparent() {
     const { ctx, W, H, rawImg, bounds, accent, deep } = await this.setupTransparentCanvas();
     const lightTxt: [number,number,number] = [232,226,214];
@@ -222,7 +197,7 @@ export class CutoutPosterRenderer {
     drawGoldFrame(ctx, W, H);
   }
 
-  /** LAYOUT: Classic Right — mirror of Classic Left; text column moves to the left, character stays centered. */
+  /** Classic Right: mirror of Classic Left, text column on the left. */
   private async generateClassicRightTransparent() {
     const { ctx, W, H, rawImg, bounds, accent, deep } = await this.setupTransparentCanvas();
     const lightTxt: [number,number,number] = [232,226,214];
@@ -252,7 +227,7 @@ export class CutoutPosterRenderer {
     drawGoldFrame(ctx, W, H);
   }
 
-  /** LAYOUT: Split — character centered, attachments left column, colors right column. */
+  /** Split: attachments on the left, colors on the right, signature below the character. */
   private async generateSplitTransparent() {
     const { ctx, W, H, rawImg, bounds, accent, deep } = await this.setupTransparentCanvas();
     const lightTxt: [number,number,number] = [232,226,214];
@@ -261,9 +236,7 @@ export class CutoutPosterRenderer {
 
     const HEADER_BOTTOM = this.drawComputedHeader(ctx, W, lightTxt, accentLight);
     const FRAME_SAFE_MARGIN = 68, TOP_CLEARANCE = 90;
-    // Reserves gap + the signature block's real span + a bottom safe
-    // margin — not a separate guessed constant that could silently
-    // disagree with where the character actually ends up.
+    // Room for the signature block below the character plus a safe margin.
     const BOTTOM_MARGIN = 185;
 
     const maxH = (H - BOTTOM_MARGIN) - (HEADER_BOTTOM + TOP_CLEARANCE);
@@ -276,25 +249,19 @@ export class CutoutPosterRenderer {
     drawContactShadow(ctx, cx, cy, targetW, targetH);
     ctx.drawImage(rawImg, bounds.x, bounds.y, bounds.w, bounds.h, cx, cy, targetW, targetH);
 
-    // Each side only carries 8 entries instead of 16 shared — spacing
-    // naturally comes out more generous, matching the approved mockup.
     const { fields, colorRows } = this.getFieldsAndColors();
     const textTop = HEADER_BOTTOM + 40, textBottom = charBottom - 20;
     this.drawTextColumn(ctx, { x: 60, align: 'left', topY: textTop, bottomY: textBottom, fields, colors: [], lightTxt, dimTxt, accentLight });
     this.drawTextColumn(ctx, { x: W-60, align: 'right', topY: textTop, bottomY: textBottom, fields: [], colors: colorRows, lightTxt, dimTxt, accentLight });
 
-    // Derived from the character's REAL bottom edge (25px gap + the
-    // ~40px ascent to the name's baseline), not a fixed H-offset that
-    // could end up touching the character depending on how tall it
-    // scaled — this is exactly the bug that let this touch at 0px
-    // clearance before.
+    // From the character's actual bottom edge: 25px gap + ~40px ascent to the baseline.
     const sigY = charBottom + 25 + 40;
     this.drawSignature(ctx, W/2, sigY, 'center', lightTxt, dimTxt, accentLight);
 
     drawGoldFrame(ctx, W, H);
   }
 
-  /** LAYOUT: Showcase — dominant character, signature bottom-left, two-column band across the very bottom. */
+  /** Showcase: large character, signature bottom-left, two-column band along the bottom. */
   private async generateShowcaseTransparent() {
     const { ctx, W, H, rawImg, bounds, accent, deep } = await this.setupTransparentCanvas();
     const lightTxt: [number,number,number] = [232,226,214];
@@ -302,16 +269,8 @@ export class CutoutPosterRenderer {
     const accentLight = mixRgb(accent, [255,255,255], 0.45);
 
     const HEADER_BOTTOM = this.drawComputedHeader(ctx, W, lightTxt, accentLight);
-    // TOP_CLEARANCE matches the value used everywhere else (90, not a
-    // smaller "should be fine here" guess) — the character is
-    // top-anchored and large here too, so the same "24px reads as
-    // touching" lesson from Classic Left applies exactly the same way.
     const FRAME_SAFE_MARGIN = 68, TOP_CLEARANCE = 90;
-    // SIG_H sized to the signature block's REAL measured extent (name
-    // ascent ~40 + 87 to the loadout baseline + ~6 descent = ~133px)
-    // plus real margin on both sides — the previous 148 was 5px too
-    // tight against the band divider below it, caught by rendering
-    // and checking the actual numbers rather than trusting a guess.
+    // SIG_H: signature block's measured extent (~133px) plus margin on both sides.
     const SIG_H = 175, BAND_H = Math.round(H*0.27);
     const reservedBottom = SIG_H + BAND_H;
 

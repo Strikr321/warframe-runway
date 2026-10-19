@@ -3,16 +3,7 @@ import { Component, output, signal } from '@angular/core';
 export type ViewMode = 'frame' | 'loadout';
 export type ChipFilter = 'all' | 'has' | 'empty';
 
-/**
- * PURE EVENT COMPONENT.
- * Owns zero data about loadouts. Its only job is translating user
- * intent (typed search, toggled view, tapped chip) into events the
- * page listens to. The page does the actual filtering — if filtering
- * lived here too, two components would fight over one list.
- *
- * It keeps tiny bits of UI state (which button looks active) as
- * signals — local state is fine; DATA is what must live upstream.
- */
+/** View toggle, search box, and filter chips. Emits intent; the page does the filtering. */
 @Component({
   selector: 'app-controls-bar',
   imports: [],
@@ -38,7 +29,6 @@ export class ControlsBar {
   }
 
   onSearch(e: Event) {
-    // Event targets are generic; we narrow to the input element to read .value
     this.searchChange.emit((e.target as HTMLInputElement).value);
   }
 }

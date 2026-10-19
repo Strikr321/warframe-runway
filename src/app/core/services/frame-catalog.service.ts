@@ -14,26 +14,12 @@ interface CacheShape {
 }
 
 /**
- * FRAME CATALOG — live data instead of a hand-maintained array.
- * =================================================================
- * Backed by WFCD's community-maintained `warframe-items` dataset
- * (the same project behind warframestat.us), fetched straight from
- * GitHub's raw file host. This is genuinely live: it's what proved
- * "Sirius & Orion" (added June 17, 2026) shows up automatically here
- * without anyone touching this codebase.
+ * The list of Warframes, sourced live from WFCD's community `warframe-items`
+ * dataset so new frames appear without code changes.
  *
- * Caching strategy: the raw source file is several MB (it carries
- * full ability/stat data for every frame, not just names), so
- * fetching it on every page load would be wasteful. Instead: fetch
- * once, keep only what we need (name + image), cache THAT slim
- * result in localStorage with a timestamp, and only re-fetch once
- * the cache is more than a day old. New content shows up within a
- * day of release with zero manual work — which is the whole point.
- *
- * If the fetch ever fails (offline, source moved, CORS changes),
- * this quietly falls back to the last successful cache, or to the
- * original hardcoded FRAMES list as a last resort — the app never
- * breaks because an external, unowned data source hiccuped.
+ * The source file is several MB, so only name + image are kept and cached in
+ * localStorage for a day. On fetch failure it falls back to the last cache,
+ * then to FALLBACK_FRAMES.
  */
 @Injectable({ providedIn: 'root' })
 export class FrameCatalogService {
@@ -47,13 +33,13 @@ export class FrameCatalogService {
 
   private readonly cached = this.readCache();
 
-  /** Plain frame names — drop-in replacement for the old hardcoded FRAMES array. */
+  /** Frame names, sorted. */
   frames = signal<string[]>(this.cached?.infos.map(i => i.name) ?? FALLBACK_FRAMES);
-  /** Name + portrait image, for anywhere that wants to show a picture too. */
+  /** Frame names with portrait image URLs. */
   frameInfos = signal<FrameInfo[]>(this.cached?.infos ?? []);
 
   loading = signal(false);
-  /** Human-readable status for a small "last refreshed" caption in the UI. */
+  /** Caption text, e.g. "refreshed 3h ago". */
   status = signal<string>(this.cached ? this.describeAge(this.cached.fetchedAt) : 'Using built-in frame list');
   lastError = signal<string | null>(null);
 
@@ -62,7 +48,6 @@ export class FrameCatalogService {
     if (isStale) this.refresh();
   }
 
-  /** Force a refresh right now — exposed for a manual "Refresh" button if wanted. */
   refresh(): void {
     this.loading.set(true);
     this.http.get<RawWfcdItem[]>(FrameCatalogService.SOURCE_URL).subscribe({
@@ -74,14 +59,7 @@ export class FrameCatalogService {
     });
   }
 
-  /**
-   * Names with no generic structural signal to exclude them by — just
-   * variant/alternate versions of a base frame that this app treats
-   * as "the same frame" (Excalibur Umbra -> Excalibur). Unlike Primes
-   * (which have a real `isPrime` flag) or Necramechs (a real
-   * `productCategory` of "MechSuits"), there's nothing in the raw data
-   * that distinguishes these, so they're excluded by exact name here.
-   */
+  /** Variants treated as their base frame that the data has no flag for (unlike Primes or Necramechs). */
   private static readonly EXCLUDED_NAMES = new Set(['Excalibur Umbra']);
 
   private onFetchSuccess(raw: RawWfcdItem[]) {
@@ -90,20 +68,12 @@ export class FrameCatalogService {
 
     for (const item of raw) {
       if (item.isPrime) continue;
-      // "Suits" is what actual Warframes are categorized as in this
-      // dataset — Necramechs (Bonewidow, Voidrig) are "MechSuits", and
-      // a stray "Helminth" entry has no category at all. Filtering to
-      // Suits excludes both generically, rather than guessing names.
+      // Warframes are "Suits"; this excludes Necramechs ("MechSuits") and the uncategorized Helminth entry.
       if (item.productCategory !== 'Suits') continue;
       if (FrameCatalogService.EXCLUDED_NAMES.has(item.name)) continue;
 
-      // Sirius & Orion is one Warframe slot but two separately-built,
-      // separately-colored frames — split "X & Y" into two entries so
-      // each is pickable on its own, the way this app treats every
-      // other frame. Checking the SPLIT names (not the raw combined
-      // name) against `seen` is what naturally collapses "Sirius &
-      // Orion" and its duplicate "Orion & Sirius" down to just one
-      // "Sirius" and one "Orion", however many raw rows reference them.
+      // "X & Y" entries (Sirius & Orion) are two separately colored frames, so split them.
+      // Dedup on the split names so "Orion & Sirius" collapses into the same two entries.
       const names = item.name.includes(' & ') ? item.name.split(' & ').map(n => n.trim()) : [item.name];
 
       for (const name of names) {
@@ -111,8 +81,7 @@ export class FrameCatalogService {
         seen.add(name);
         infos.push({
           name,
-          // Both halves of a split combo share the one portrait this
-          // dataset provides — there's no separate per-son image data.
+          // Split pairs share the single portrait the dataset provides.
           image: FrameCatalogService.IMG_BASE + (item.imageName ?? ''),
           releaseDate: item.releaseDate,
         });
@@ -149,7 +118,7 @@ export class FrameCatalogService {
     try {
       localStorage.setItem(FrameCatalogService.CACHE_KEY, JSON.stringify(data));
     } catch {
-      // Storage full or unavailable — not fatal, just means we re-fetch next visit.
+      // Storage full or unavailable: not fatal, we just re-fetch next visit.
     }
   }
 }

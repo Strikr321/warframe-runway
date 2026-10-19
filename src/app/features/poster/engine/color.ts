@@ -42,15 +42,9 @@ export function rgbToHsv(rgb: [number,number,number]): [number, number, number] 
 }
 
 /**
- * Guarantees the glow slot reads as genuinely bright regardless of
- * what color feeds it — a flat "mix 12% toward white" only works
- * if the input is already fairly bright/saturated (gold, purple,
- * red all pass through fine). It silently fails for a deliberately
- * DARK input (the "dark neutral" landing here via the swap toggle),
- * since 12% of near-black is still near-black. Flooring the actual
- * HSV value/saturation fixes this for every case, not just the ones
- * already tested — dark inputs get genuinely lifted, already-bright
- * inputs are left alone (their value is already above the floor).
+ * Floors HSV saturation and value so the glow reads as bright even when a
+ * dark color lands in the glow slot (e.g. after a swap). Bright inputs pass
+ * through unchanged.
  */
 export function richenForGlow(rgb: [number,number,number]): [number,number,number] {
   const [h, s, v] = rgbToHsv(rgb);
@@ -58,11 +52,9 @@ export function richenForGlow(rgb: [number,number,number]): [number,number,numbe
 }
 
 /**
- * Same technique as the Python prototype: build a hue histogram
- * weighted by saturation*value (so vivid, bright pixels count for
- * more), find the peak hue, then represent it vividly rather than
- * literally averaging — averaging a teal energy color with black
- * armor produces muddy grey, not teal.
+ * The cutout's most prominent vivid hue: a hue histogram weighted by
+ * saturation x value, rendered at its peak as a vivid color. Averaging
+ * instead would mix energy colors with dark armor into muddy grey.
  */
 export function dominantHueColor(imgData: ImageData): [number, number, number] {
   const { data } = imgData;

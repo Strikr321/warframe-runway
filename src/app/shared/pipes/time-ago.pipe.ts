@@ -1,14 +1,6 @@
 import { Pipe, PipeTransform } from '@angular/core';
 
-/**
- * A PIPE = a tiny formatter usable inside any template:
- *   {{ l.edited | timeAgo }}   →   "2 hours ago"
- *
- * Why a pipe and not a method on each component? Formatting is a
- * display concern shared by many components — a pipe is written once
- * and imported wherever needed, and Angular caches the result until
- * the input value changes (that's what `pure` means, the default).
- */
+/** `{{ iso | timeAgo }}` → "2 hours ago". */
 @Pipe({ name: 'timeAgo' })
 export class TimeAgoPipe implements PipeTransform {
   transform(iso: string): string {

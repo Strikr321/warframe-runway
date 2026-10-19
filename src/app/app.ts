@@ -2,19 +2,10 @@ import { Component } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { Toast } from './shared/toast/toast';
 
-/**
- * ROOT COMPONENT — the shell of the app.
- * The header + nav live here so they appear on EVERY page.
- * The page itself is swapped in and out by <router-outlet>.
- *
- * Anatomy of a component:
- *  - this .ts file  = the logic (a TypeScript class)
- *  - app.html       = the template (what renders)
- *  - app.css        = styles scoped to ONLY this component
- */
+/** App shell: shared header and nav, the routed page, and the global toast. */
 @Component({
-  selector: 'app-root',                                   // the tag name used in index.html
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, Toast],  // what this template is allowed to use
+  selector: 'app-root',
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, Toast],
   templateUrl: './app.html',
   styleUrl: './app.css',
 })
