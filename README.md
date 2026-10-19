@@ -30,7 +30,7 @@ A full-stack fashion frame studio for Warframe — build color loadouts, generat
 | 4f | No-green-screen path: opt-in in-browser AI background removal, photo-mode edge fades | — |
 | 5a | Hover fan-out, Recently Edited linking, 6-loadout cap | ✅ |
 | 5b | Live frame catalog from WFCD (cached daily) | ✅ |
-| 5c | Refactor: feature folders, split the poster generator, ToastService, comment cleanup | ⏳ |
+| 5c | Refactor: feature folders, split the poster generator, ToastService, comment cleanup | ✅ |
 | 5d | Show frame images, fix favorites, 404 + unsaved-changes guard | — |
 | 5e | Tests (Vitest), ESLint, GitHub Actions CI | — |
 | 6 | Spring Boot + PostgreSQL: entities, REST API, DTOs, validation, JUnit + Testcontainers | — |
