@@ -1,6 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { FRAMES as HARDCODED_FALLBACK } from '../models/loadout.model';
+import { FALLBACK_FRAMES } from '../../data/frames-fallback.data';
 
 export interface FrameInfo {
   name: string;
@@ -48,7 +48,7 @@ export class FrameCatalogService {
   private readonly cached = this.readCache();
 
   /** Plain frame names — drop-in replacement for the old hardcoded FRAMES array. */
-  frames = signal<string[]>(this.cached?.infos.map(i => i.name) ?? HARDCODED_FALLBACK);
+  frames = signal<string[]>(this.cached?.infos.map(i => i.name) ?? FALLBACK_FRAMES);
   /** Name + portrait image, for anywhere that wants to show a picture too. */
   frameInfos = signal<FrameInfo[]>(this.cached?.infos ?? []);
 

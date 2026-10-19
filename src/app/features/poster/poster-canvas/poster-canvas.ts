@@ -1,7 +1,9 @@
 import {
   Component, ElementRef, HostListener, ViewChild, computed, inject, input, signal,
 } from '@angular/core';
-import { Attachments, CHANNELS, ChannelKey, ColorChannelState, LOADOUT_FIELDS } from '../../../core/models/loadout.model';
+import { Attachments, ChannelKey, ColorChannelState } from '../../../core/models/loadout.model';
+import { CHANNELS } from '../../../data/channels.data';
+import { LOADOUT_FIELDS } from '../../../data/loadout-fields.data';
 import { LAYOUTS, LAYOUT_KEYS, PosterLayout } from '../../../data/layouts.data';
 import { PALETTES, PALETTE_NAMES } from '../../../data/palettes.data';
 import { PaletteGrid } from '../../../shared/palette-grid/palette-grid';

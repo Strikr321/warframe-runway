@@ -1,5 +1,6 @@
 import { Component, input, output } from '@angular/core';
-import { Attachments, LOADOUT_FIELDS } from '../../../core/models/loadout.model';
+import { Attachments } from '../../../core/models/loadout.model';
+import { LOADOUT_FIELDS } from '../../../data/loadout-fields.data';
 
 /**
  * FORM COMPONENT.

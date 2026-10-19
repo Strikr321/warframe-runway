@@ -1,5 +1,4 @@
 import { Component, input, output } from '@angular/core';
-import { FRAMES } from '../../../core/models/loadout.model';
 
 /**
  * DUMB DISPLAY + EVENT COMPONENT.
@@ -19,6 +18,6 @@ import { FRAMES } from '../../../core/models/loadout.model';
 })
 export class FrameSelector {
   selected = input.required<string>();
-  frames = input<string[]>(FRAMES);
+  frames = input.required<string[]>();
   select = output<string>();
 }
