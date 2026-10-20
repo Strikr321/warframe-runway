@@ -1,18 +1,13 @@
-/**
- * A saved loadout. `attachments` and `colorState` are optional only because
- * the demo seed data predates them; loadouts saved from the Builder always
- * have both.
- */
+/** A saved loadout. Card color dots are derived from `colorState` (see summaryColors). */
 export interface Loadout {
   id: string;
   frame: string;
   name: string;
   creator: string;
-  colors: string[]; // 4-color summary shown on cards (derived at save time)
   fav: boolean;
   edited: string; // ISO timestamp
-  attachments?: Attachments;
-  colorState?: Record<ChannelKey, ColorChannelState>;
+  attachments: Attachments;
+  colorState: Record<ChannelKey, ColorChannelState>;
 }
 
 /**

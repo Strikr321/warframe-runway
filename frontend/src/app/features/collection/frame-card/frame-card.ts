@@ -1,5 +1,6 @@
 import { Component, computed, input, output, signal } from '@angular/core';
 import { Loadout, MAX_LOADOUTS_PER_FRAME } from '../../../core/models/loadout.model';
+import { SummaryColorsPipe } from '../../../shared/pipes/summary-colors.pipe';
 
 /**
  * One frame in the Collection grid: 3D tilt on hover, and with 2+ loadouts
@@ -7,7 +8,7 @@ import { Loadout, MAX_LOADOUTS_PER_FRAME } from '../../../core/models/loadout.mo
  */
 @Component({
   selector: 'app-frame-card',
-  imports: [],
+  imports: [SummaryColorsPipe],
   templateUrl: './frame-card.html',
   styleUrl: './frame-card.css',
 })
@@ -23,7 +24,8 @@ export class FrameCard {
   openLoadout = output<string>();
   /** "+" or an empty card was clicked. */
   createRequested = output<void>();
-  toggleFav = output<void>();
+  /** Id of the cover loadout whose favorite flag the star toggles. */
+  toggleFav = output<string>();
   hoverChange = output<boolean>();
 
   get isEmpty(): boolean {
@@ -31,9 +33,6 @@ export class FrameCard {
   }
   get first(): Loadout | undefined {
     return this.loadouts()[0];
-  }
-  get hasFav(): boolean {
-    return this.loadouts().some((l) => l.fav);
   }
   get atCap(): boolean {
     return this.loadouts().length >= MAX_LOADOUTS_PER_FRAME;
@@ -123,6 +122,6 @@ export class FrameCard {
   }
   onFavClick(e: Event) {
     e.stopPropagation();
-    this.toggleFav.emit();
+    if (this.first) this.toggleFav.emit(this.first.id);
   }
 }

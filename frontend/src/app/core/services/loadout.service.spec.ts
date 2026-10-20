@@ -1,11 +1,22 @@
 import { TestBed } from '@angular/core/testing';
-import { Loadout, MAX_LOADOUTS_PER_FRAME } from '../models/loadout.model';
+import { Loadout, MAX_LOADOUTS_PER_FRAME, emptyAttachments } from '../models/loadout.model';
+import { defaultColorState, summaryColors } from '../../data/channels.data';
 import { LoadoutService } from './loadout.service';
 
-const STORAGE_KEY = 'warframe-runway.loadouts.v1';
+const STORAGE_KEY = 'warframe-runway.loadouts.v2';
+const LEGACY_KEY_V1 = 'warframe-runway.loadouts.v1';
 
 function loadout(id: string, frame = 'Volt'): Loadout {
-  return { id, frame, name: `L ${id}`, creator: 'Tenno', colors: [], fav: false, edited: '' };
+  return {
+    id,
+    frame,
+    name: `L ${id}`,
+    creator: 'Tenno',
+    fav: false,
+    edited: '',
+    attachments: emptyAttachments(),
+    colorState: defaultColorState(),
+  };
 }
 
 describe('LoadoutService', () => {
@@ -61,5 +72,51 @@ describe('LoadoutService', () => {
     TestBed.resetTestingModule();
     localStorage.setItem(STORAGE_KEY, '{not json');
     expect(TestBed.inject(LoadoutService).loadouts()).toEqual([]);
+  });
+
+  describe('v1 storage migration', () => {
+    beforeEach(() => TestBed.resetTestingModule());
+
+    it('fills in color state from the old 4-color summary and moves to the v2 key', () => {
+      const v1 = [
+        {
+          id: 'old',
+          frame: 'Volt',
+          name: 'Old',
+          creator: 'Tenno',
+          fav: true,
+          edited: '',
+          colors: ['#111111', '#222222', '#333333', '#444444'],
+        },
+      ];
+      localStorage.setItem(LEGACY_KEY_V1, JSON.stringify(v1));
+
+      const [migrated] = TestBed.inject(LoadoutService).loadouts();
+      expect(summaryColors(migrated.colorState)).toEqual([
+        '#111111',
+        '#222222',
+        '#333333',
+        '#444444',
+      ]);
+      expect(migrated.attachments).toEqual(emptyAttachments());
+      expect(migrated).not.toHaveProperty('colors');
+      expect(localStorage.getItem(LEGACY_KEY_V1)).toBeNull();
+    });
+
+    it('keeps full color state that v1 loadouts already had', () => {
+      const colorState = defaultColorState();
+      colorState.primary.hex = '#abcdef';
+      localStorage.setItem(
+        LEGACY_KEY_V1,
+        JSON.stringify([{ ...loadout('a'), colors: ['#000000'], colorState }]),
+      );
+      expect(TestBed.inject(LoadoutService).byId('a')?.colorState.primary.hex).toBe('#abcdef');
+    });
+  });
+
+  it('loads demo loadouts with full color state, so saving them keeps their colors', () => {
+    service.seedDemo();
+    const volt = service.byId('l1')!;
+    expect(summaryColors(volt.colorState)).toEqual(['#e8641a', '#3080c8', '#a0a0a0', '#f0c050']);
   });
 });

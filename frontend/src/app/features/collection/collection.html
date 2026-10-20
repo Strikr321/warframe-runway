@@ -67,7 +67,7 @@
         [highlighted]="hoveredFrame() === frame"
         (openLoadout)="openLoadoutById($event)"
         (createRequested)="createForFrame(frame)"
-        (toggleFav)="toggleFav(frame)"
+        (toggleFav)="toggleFav($event)"
         (hoverChange)="onFrameHover(frame, $event)"
       />
     }
@@ -80,7 +80,7 @@
         [highlighted]="hoveredFrame() === l.frame"
         (openLoadout)="openLoadoutById($event)"
         (createRequested)="createForFrame(l.frame)"
-        (toggleFav)="toggleFavLoadout(l)"
+        (toggleFav)="toggleFav($event)"
         (hoverChange)="onFrameHover(l.frame, $event)"
       />
     }

@@ -16,7 +16,7 @@
         <div class="recent-card-frame">{{ l.frame }}</div>
         <div class="recent-card-name">{{ l.name }}</div>
         <div class="recent-card-colors">
-          @for (c of l.colors; track $index) {
+          @for (c of l | summaryColors; track $index) {
             <div class="recent-color-dot" [style.background]="c"></div>
           }
         </div>

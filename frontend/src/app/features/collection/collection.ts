@@ -90,21 +90,13 @@ export class Collection {
   }
 
   // ── Favorites ─────────────────────────────────────────────
-  toggleFav(frame: string) {
-    const first = this.loadoutsFor(frame)[0];
-    if (first) this.store.toggleFav(first.id);
-  }
-  toggleFavLoadout(l: Loadout) {
-    this.store.toggleFav(l.id);
+  toggleFav(loadoutId: string) {
+    this.store.toggleFav(loadoutId);
   }
 
   // ── Demo data ─────────────────────────────────────────────
   seedDemo() {
     this.store.seedDemo();
     this.toast.show('Sample loadouts loaded');
-  }
-  clearAll() {
-    this.store.clearAll();
-    this.toast.show('All loadouts cleared');
   }
 }

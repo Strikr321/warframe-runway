@@ -8,7 +8,7 @@ import {
   MAX_LOADOUTS_PER_FRAME,
   emptyAttachments,
 } from '../../core/models/loadout.model';
-import { CHANNELS, defaultColorState, summaryColors } from '../../data/channels.data';
+import { CHANNELS, defaultColorState } from '../../data/channels.data';
 import { LoadoutService } from '../../core/services/loadout.service';
 import { FrameCatalogService } from '../../core/services/frame-catalog.service';
 import { FrameSelector } from './frame-selector/frame-selector';
@@ -61,8 +61,8 @@ export class Builder {
     this.frame.set(l.frame);
     this.name.set(l.name);
     this.creator.set(l.creator);
-    this.attachments.set(l.attachments ?? emptyAttachments());
-    this.colorState.set(l.colorState ?? defaultColorState());
+    this.attachments.set(l.attachments);
+    this.colorState.set(l.colorState);
   }
 
   onChannelChange(key: ChannelKey, next: ColorChannelState) {
@@ -80,7 +80,6 @@ export class Builder {
       frame: this.frame(),
       name: this.name().trim() || 'Unnamed Loadout',
       creator: this.creator().trim() || 'Tenno',
-      colors: summaryColors(this.colorState()),
       fav: this.isEditing() ? (this.store.byId(this.editingId()!)?.fav ?? false) : false,
       edited: new Date().toISOString(),
       attachments: this.attachments(),
