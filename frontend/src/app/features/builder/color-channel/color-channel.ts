@@ -25,7 +25,7 @@ export class ColorChannel {
   activeCells = computed(() => PALETTES[this.activePalette()]);
 
   toggle() {
-    this.open.update(v => !v);
+    this.open.update((v) => !v);
   }
 
   onPaletteSelect(e: Event) {
@@ -35,7 +35,13 @@ export class ColorChannel {
   onPick(cell: { row: number; col: number; hex: string }) {
     const paletteName = this.activePalette();
     const label = `${paletteName} ${String.fromCharCode(65 + cell.col)}${cell.row + 1}`;
-    this.change.emit({ palette: paletteName, row: cell.row, col: cell.col, hex: cell.hex, label });
+    this.colorChange.emit({
+      palette: paletteName,
+      row: cell.row,
+      col: cell.col,
+      hex: cell.hex,
+      label,
+    });
     this.paletteOverride.set(null);
     this.open.set(false);
   }
