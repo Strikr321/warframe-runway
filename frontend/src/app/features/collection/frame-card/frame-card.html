@@ -20,6 +20,17 @@
     <!-- Gloss highlight tracks the mouse via CSS custom properties -->
     <div class="card-gloss" [style.--mouse-x]="glossX + '%'" [style.--mouse-y]="glossY + '%'"></div>
 
+    @if (image() && !imageFailed()) {
+      <img
+        class="card-portrait"
+        [src]="image()"
+        alt=""
+        loading="lazy"
+        decoding="async"
+        (error)="imageFailed.set(true)"
+      />
+    }
+
     @if (badge() && loadouts().length > 0) {
       <div class="card-badge">{{ loadouts().length }}</div>
     }
@@ -27,13 +38,14 @@
     @if (!isEmpty) {
       <div
         class="card-fav"
-        [class.is-fav]="hasFav"
+        [class.is-fav]="first?.fav"
+        [attr.aria-pressed]="first?.fav ?? false"
         (click)="onFavClick($event)"
         role="button"
         tabindex="0"
         (keydown.enter)="onFavClick($event)"
         (keydown.space)="$event.preventDefault(); onFavClick($event)"
-        aria-label="Toggle favorite"
+        [attr.aria-label]="'Favorite ' + (first?.name ?? frame())"
       >
         ★
       </div>
@@ -42,7 +54,7 @@
     <div class="card-inner">
       @if (first; as l) {
         <div class="card-colors">
-          @for (c of l.colors; track $index) {
+          @for (c of l | summaryColors; track $index) {
             <div class="card-color-dot" [style.background]="c"></div>
           }
         </div>
@@ -135,7 +147,7 @@
         [attr.tabindex]="fanned() ? 0 : -1"
       >
         <div class="fm-colors">
-          @for (c of l.colors.slice(0, 3); track $index) {
+          @for (c of (l | summaryColors).slice(0, 3); track $index) {
             <div class="fm-dot" [style.background]="c"></div>
           }
         </div>

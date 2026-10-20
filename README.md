@@ -33,7 +33,7 @@ A full-stack fashion frame studio for Warframe — build color loadouts, generat
 | 5a | Hover fan-out, Recently Edited linking, 6-loadout cap | ✅ |
 | 5b | Live frame catalog from WFCD (cached daily) | ✅ |
 | 5c | Refactor: feature folders, split the poster generator, ToastService, comment cleanup | ✅ |
-| 5d | Show frame images, fix favorites, 404 + unsaved-changes guard | — |
+| 5d | Show frame images, fix favorites, 404 + unsaved-changes guard | ✅ |
 | 5e | Tests (Vitest), ESLint, Prettier, GitHub Actions CI | ✅ |
 | 6 | Spring Boot + PostgreSQL: entities, REST API, DTOs, validation, JUnit + Testcontainers | — |
 | 7 | Connect Angular to the API (HttpClient, interceptor, import existing localStorage loadouts) | — |

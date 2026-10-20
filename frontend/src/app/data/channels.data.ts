@@ -19,7 +19,22 @@ export function defaultColorState(): Record<ChannelKey, ColorChannelState> {
   return state;
 }
 
+/** Channels shown as the 4 color dots on Collection cards. */
+const SUMMARY_CHANNELS: ChannelKey[] = ['primary', 'secondary', 'en1', 'en2'];
+
 /** The 4 dots shown on Collection cards — a readable summary, not the full 8 channels. */
 export function summaryColors(colorState: Record<ChannelKey, ColorChannelState>): string[] {
-  return [colorState.primary.hex, colorState.secondary.hex, colorState.en1.hex, colorState.en2.hex];
+  return SUMMARY_CHANNELS.map((key) => colorState[key].hex);
+}
+
+/** A full color state whose summary channels match `colors`; the rest keep their defaults. */
+export function colorStateFromSummary(
+  colors: string[],
+  label = 'Custom',
+): Record<ChannelKey, ColorChannelState> {
+  const state = defaultColorState();
+  SUMMARY_CHANNELS.forEach((key, i) => {
+    if (colors[i]) state[key] = { ...state[key], hex: colors[i], label };
+  });
+  return state;
 }
