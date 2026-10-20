@@ -27,6 +27,10 @@ public class Loadout {
     @Id
     private UUID id;
 
+    /** The account that owns this loadout. Null only for loadouts created before accounts existed. */
+    @Column(name = "owner_id")
+    private UUID ownerId;
+
     @Column(nullable = false, length = 40)
     private String frame;
 
@@ -67,8 +71,9 @@ public class Loadout {
         // for JPA
     }
 
-    public Loadout(String frame) {
+    public Loadout(UUID ownerId, String frame) {
         this.id = UUID.randomUUID();
+        this.ownerId = ownerId;
         this.frame = frame;
     }
 
@@ -85,6 +90,10 @@ public class Loadout {
 
     public UUID getId() {
         return id;
+    }
+
+    public UUID getOwnerId() {
+        return ownerId;
     }
 
     public String getFrame() {

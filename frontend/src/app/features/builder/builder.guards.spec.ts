@@ -26,10 +26,15 @@ describe('builder guards', () => {
     });
   });
 
-  /** Runs the guard while the API answers the initial list request with `items`. */
+  const me = { id: 'u1', email: 'a@example.com', name: 'A', avatarUrl: null };
+
+  /** Runs the guard while the API answers /api/me (signed in) and then the loadout list. */
   async function runExistsGuard(id: string, items: unknown[]) {
+    const http = TestBed.inject(HttpTestingController);
     const result = TestBed.runInInjectionContext(() => loadoutExistsGuard(routeWithId(id), state));
-    TestBed.inject(HttpTestingController).expectOne('/api/loadouts').flush(items);
+    http.expectOne('/api/me').flush(me);
+    await new Promise((r) => setTimeout(r));
+    http.expectOne('/api/loadouts').flush(items);
     return result;
   }
 
@@ -47,6 +52,16 @@ describe('builder guards', () => {
         updatedAt: '',
       };
       expect(await runExistsGuard('l1', [loadout])).toBe(true);
+    });
+
+    it('does not call the loadout API for a signed-out visitor', async () => {
+      const http = TestBed.inject(HttpTestingController);
+      const result = TestBed.runInInjectionContext(() =>
+        loadoutExistsGuard(routeWithId('l1'), state),
+      );
+      http.expectOne('/api/me').flush(null, { status: 401, statusText: 'Unauthorized' });
+      expect(await result).toBe(false);
+      http.expectNone('/api/loadouts');
     });
 
     it('redirects an unknown id to the Collection with a toast', async () => {

@@ -1,7 +1,8 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { Router } from '@angular/router';
 import { Loadout } from '../../core/models/loadout.model';
 import { LoadoutService } from '../../core/services/loadout.service';
+import { AuthService } from '../../core/services/auth.service';
 import { FrameCatalogService } from '../../core/services/frame-catalog.service';
 import { StatsBanner } from './stats-banner/stats-banner';
 import { RecentRow } from './recent-row/recent-row';
@@ -21,6 +22,7 @@ import { ToastService } from '../../shared/toast/toast.service';
 })
 export class Collection {
   private store = inject(LoadoutService);
+  auth = inject(AuthService);
   private router = inject(Router);
   catalog = inject(FrameCatalogService);
   private toast = inject(ToastService);
@@ -100,7 +102,14 @@ export class Collection {
   }
 
   constructor() {
-    this.store.ensureLoaded();
+    // Load the collection whenever someone is signed in (initially, or after signing in again).
+    effect(() => {
+      if (this.auth.signedIn()) untracked(() => this.store.ensureLoaded());
+    });
+  }
+
+  signIn() {
+    this.auth.signIn();
   }
 
   retry() {

@@ -1,0 +1,10 @@
+# Test-only overrides (classpath:config/ takes precedence over the main application.yml).
+# Tests never talk to Google, so placeholder client credentials are enough.
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: test-client-id
+            client-secret: test-client-secret

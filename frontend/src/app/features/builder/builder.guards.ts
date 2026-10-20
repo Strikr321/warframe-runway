@@ -1,5 +1,6 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, CanDeactivateFn, Router } from '@angular/router';
+import { AuthService } from '../../core/services/auth.service';
 import { LoadoutService } from '../../core/services/loadout.service';
 import { ToastService } from '../../shared/toast/toast.service';
 
@@ -13,6 +14,10 @@ export const loadoutExistsGuard: CanActivateFn = async (route) => {
   const store = inject(LoadoutService);
   const toast = inject(ToastService);
   const router = inject(Router);
+  const auth = inject(AuthService);
+  // authGuard handles signed-out visitors; don't hit the API (and a 401) for them.
+  await auth.ensureChecked();
+  if (!auth.signedIn()) return false;
   await store.ensureLoaded();
 
   const id = route.paramMap.get('id');

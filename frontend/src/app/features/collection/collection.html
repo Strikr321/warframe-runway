@@ -12,7 +12,13 @@
   }
 </div>
 
-@if (state() === 'ready' && browserSavedCount() > 0) {
+@if (auth.status() === 'signed-out') {
+  <div class="empty-banner">
+    <div class="empty-title">Sign in to build your collection</div>
+    <p>Your loadouts are saved to your account, so they follow you to any browser.</p>
+    <button class="seed-btn" (click)="signIn()">Sign in with Google</button>
+  </div>
+} @else if (auth.status() === 'signed-in' && state() === 'ready' && browserSavedCount() > 0) {
   <div class="empty-banner">
     <div class="empty-title">Loadouts saved in this browser</div>
     <p>
@@ -25,7 +31,9 @@
   </div>
 }
 
-@if (state() === 'loading') {
+@if (auth.status() !== 'signed-in') {
+  <!-- Signed out (prompt above) or still checking the session -->
+} @else if (state() === 'loading') {
   <div class="empty-banner" role="status">
     <div class="empty-title">Loading your loadouts…</div>
   </div>
