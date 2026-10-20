@@ -43,6 +43,7 @@ export class Builder implements HasUnsavedChanges {
   isEditing = computed(() => this.editingId() !== null);
   /** Shown inline if a save is rejected for being past the per-frame cap. */
   capMessage = signal('');
+  saving = signal(false);
 
   /** Draft as last loaded or saved; compared against the live draft to detect edits. */
   private savedSnapshot: string;
@@ -101,21 +102,26 @@ export class Builder implements HasUnsavedChanges {
     this.capMessage.set(''); // a stale warning from a different frame shouldn't linger
   }
 
-  save() {
-    const draft: Loadout = {
-      id: this.editingId() ?? crypto.randomUUID(),
-      frame: this.frame(),
-      name: this.name().trim() || 'Unnamed Loadout',
-      creator: this.creator().trim() || 'Tenno',
-      fav: this.isEditing() ? (this.store.byId(this.editingId()!)?.fav ?? false) : false,
-      edited: new Date().toISOString(),
-      attachments: this.attachments(),
-      colorState: this.colorState(),
-    };
-    const ok = this.store.save(draft);
-    if (!ok) {
+  async save() {
+    if (this.saving()) return;
+    this.saving.set(true);
+    this.capMessage.set('');
+    const result = await this.store.save(
+      {
+        frame: this.frame(),
+        name: this.name().trim() || 'Unnamed Loadout',
+        creator: this.creator().trim() || 'Tenno',
+        attachments: this.attachments(),
+        colorState: this.colorState(),
+      },
+      this.editingId() ?? undefined,
+    );
+    this.saving.set(false);
+    if (!result.ok) {
       this.capMessage.set(
-        `${this.frame()} already has ${MAX_LOADOUTS_PER_FRAME} loadouts — the max. Delete one first, or pick a different frame.`,
+        result.reason === 'limit'
+          ? `${this.frame()} already has ${MAX_LOADOUTS_PER_FRAME} loadouts — the max. Delete one first, or pick a different frame.`
+          : result.message,
       );
       return;
     }
@@ -127,11 +133,14 @@ export class Builder implements HasUnsavedChanges {
     this.router.navigateByUrl('/');
   }
 
-  delete() {
+  async delete() {
     const id = this.editingId();
     if (!id || !window.confirm(`Delete "${this.name() || 'this loadout'}"? This can't be undone.`))
       return;
-    this.store.delete(id);
+    if (!(await this.store.delete(id))) {
+      this.capMessage.set('Could not delete the loadout. Try again.');
+      return;
+    }
     this.leaving = true;
     this.router.navigateByUrl('/');
   }

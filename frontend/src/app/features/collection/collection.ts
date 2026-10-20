@@ -26,6 +26,9 @@ export class Collection {
   private toast = inject(ToastService);
 
   loadouts = this.store.loadouts;
+  state = this.store.state;
+  browserSavedCount = this.store.browserSavedCount;
+  busy = signal(false);
   view = signal<ViewMode>('frame');
   search = signal('');
   filter = signal<ChipFilter>('all');
@@ -96,9 +99,31 @@ export class Collection {
     this.store.toggleFav(loadoutId);
   }
 
-  // ── Demo data ─────────────────────────────────────────────
-  seedDemo() {
-    this.store.seedDemo();
+  constructor() {
+    this.store.ensureLoaded();
+  }
+
+  retry() {
+    this.store.reload();
+  }
+
+  // ── Demo data and browser import ──────────────────────────
+  async seedDemo() {
+    this.busy.set(true);
+    await this.store.seedDemo();
+    this.busy.set(false);
     this.toast.show('Sample loadouts loaded');
+  }
+
+  async importBrowserSaved() {
+    this.busy.set(true);
+    const count = await this.store.importBrowserSaved();
+    this.busy.set(false);
+    const left = this.browserSavedCount();
+    this.toast.show(
+      left
+        ? `Imported ${count}; ${left} couldn't be (frame at the 6-loadout limit)`
+        : `Imported ${count} loadout${count === 1 ? '' : 's'}`,
+    );
   }
 }

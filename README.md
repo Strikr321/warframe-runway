@@ -11,7 +11,7 @@ A full-stack fashion frame studio for Warframe — build color loadouts, generat
 - 🗂 **Collection** — every Warframe as a card grid with stats, search, filters, and favorites; the frame list syncs live from the community WFCD dataset
 - 🎨 **Builder** — per-channel color picker with real in-game palettes, attachment loadout form
 - 🖼 **Poster generator** — canvas-rendered loadout posters in 4 layouts, with green-screen background removal and an auto-colored background, downloadable as PNG
-- 💾 Persistent loadouts (localStorage now → Spring Boot REST API + PostgreSQL)
+- 💾 Loadouts stored in PostgreSQL through the Spring Boot REST API (loadouts saved in the browser by earlier versions can be imported)
 - ☁️ Image storage on AWS S3 via pre-signed uploads — the database stores links, not image bytes (planned)
 - 🔐 User accounts with OAuth2 login (planned)
 
@@ -36,7 +36,7 @@ A full-stack fashion frame studio for Warframe — build color loadouts, generat
 | 5d | Show frame images, fix favorites, 404 + unsaved-changes guard | ✅ |
 | 5e | Tests (Vitest), ESLint, Prettier, GitHub Actions CI | ✅ |
 | 6 | Spring Boot + PostgreSQL: entities, REST API, DTOs, validation, JUnit + Testcontainers | ✅ |
-| 7 | Connect Angular to the API (HttpClient, interceptor, import existing localStorage loadouts) | — |
+| 7 | Connect Angular to the API (HttpClient, interceptor, import existing localStorage loadouts) | ✅ |
 | 8 | OAuth2 login (Discord / Google) with Spring Security | — |
 | 9 | S3 pre-signed image uploads (DB stores keys/URLs only) | — |
 | 10 | Sharing: public gallery, share links, QR code on posters | — |
@@ -68,6 +68,8 @@ cd frontend
 npm install
 npm start
 ```
+
+The Angular dev server proxies `/api` to the API on port 8080 (`frontend/proxy.conf.json`), so the browser sees a single origin.
 
 Checks (the same ones CI runs on every pull request):
 

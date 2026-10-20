@@ -12,11 +12,34 @@
   }
 </div>
 
-@if (loadouts().length === 0) {
+@if (state() === 'ready' && browserSavedCount() > 0) {
+  <div class="empty-banner">
+    <div class="empty-title">Loadouts saved in this browser</div>
+    <p>
+      You have {{ browserSavedCount() }} loadout{{ browserSavedCount() === 1 ? '' : 's' }} from
+      before your collection moved to the server.
+    </p>
+    <button class="seed-btn" [disabled]="busy()" (click)="importBrowserSaved()">
+      Import to my collection
+    </button>
+  </div>
+}
+
+@if (state() === 'loading') {
+  <div class="empty-banner" role="status">
+    <div class="empty-title">Loading your loadouts…</div>
+  </div>
+} @else if (state() === 'error') {
+  <div class="empty-banner" role="alert">
+    <div class="empty-title">Couldn't load your loadouts</div>
+    <p>The server didn't respond. Check that the API is running, then try again.</p>
+    <button class="seed-btn" (click)="retry()">Retry</button>
+  </div>
+} @else if (loadouts().length === 0) {
   <div class="empty-banner">
     <div class="empty-title">No loadouts yet</div>
     <p>Explore with sample data, or head to the Builder to create your first one.</p>
-    <button class="seed-btn" (click)="seedDemo()">Load Sample Loadouts</button>
+    <button class="seed-btn" [disabled]="busy()" (click)="seedDemo()">Load Sample Loadouts</button>
   </div>
 } @else {
   <app-recent-row

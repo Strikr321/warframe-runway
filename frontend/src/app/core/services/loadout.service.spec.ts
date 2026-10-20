@@ -1,122 +1,198 @@
 import { TestBed } from '@angular/core/testing';
-import { Loadout, MAX_LOADOUTS_PER_FRAME, emptyAttachments } from '../models/loadout.model';
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { emptyAttachments } from '../models/loadout.model';
 import { defaultColorState, summaryColors } from '../../data/channels.data';
 import { LoadoutService } from './loadout.service';
 
-const STORAGE_KEY = 'warframe-runway.loadouts.v2';
-const LEGACY_KEY_V1 = 'warframe-runway.loadouts.v1';
+const API = '/api/loadouts';
 
-function loadout(id: string, frame = 'Volt'): Loadout {
+/** A loadout as the API returns it. */
+function dto(id: string, overrides: Record<string, unknown> = {}) {
   return {
     id,
-    frame,
+    frame: 'Volt',
     name: `L ${id}`,
     creator: 'Tenno',
-    fav: false,
-    edited: '',
+    favorite: false,
     attachments: emptyAttachments(),
     colorState: defaultColorState(),
+    createdAt: '2026-10-19T10:00:00Z',
+    updatedAt: '2026-10-19T12:00:00Z',
+    ...overrides,
   };
 }
 
+const draft = () => ({
+  frame: 'Volt',
+  name: 'Storm',
+  creator: 'Tenno',
+  attachments: emptyAttachments(),
+  colorState: defaultColorState(),
+});
+
 describe('LoadoutService', () => {
   let service: LoadoutService;
+  let http: HttpTestingController;
+
+  function setup() {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    service = TestBed.inject(LoadoutService);
+    http = TestBed.inject(HttpTestingController);
+  }
+
+  /** Loads the service with `items` from the API. */
+  async function loadWith(items: ReturnType<typeof dto>[]) {
+    const done = service.ensureLoaded();
+    http.expectOne(API).flush(items);
+    await done;
+  }
 
   beforeEach(() => {
     localStorage.clear();
-    service = TestBed.inject(LoadoutService);
+    setup();
+  });
+  afterEach(() => http.verify());
+
+  it('loads once and maps the API shape to the app model', async () => {
+    await loadWith([dto('a', { favorite: true })]);
+    await service.ensureLoaded(); // no second request
+
+    expect(service.state()).toBe('ready');
+    const [a] = service.loadouts();
+    expect(a.fav).toBe(true);
+    expect(a.edited).toBe('2026-10-19T12:00:00Z');
   });
 
-  it('creates a new loadout and stamps the edit time', () => {
-    expect(service.save(loadout('a'))).toBe(true);
-    const saved = service.byId('a');
-    expect(saved?.edited).not.toBe('');
-    expect(service.byFrame('Volt')).toHaveLength(1);
+  it('reports an error state and allows a retry', async () => {
+    const first = service.ensureLoaded();
+    http.expectOne(API).flush(null, { status: 0, statusText: 'Unknown Error' });
+    await first;
+    expect(service.state()).toBe('error');
+
+    const retry = service.ensureLoaded();
+    http.expectOne(API).flush([dto('a')]);
+    await retry;
+    expect(service.state()).toBe('ready');
   });
 
-  it('updates an existing loadout in place', () => {
-    service.save(loadout('a'));
-    service.save({ ...loadout('a'), name: 'Renamed' });
+  it('creates when no id is given and adds the server result', async () => {
+    await loadWith([]);
+    const saving = service.save(draft());
+    const req = http.expectOne({ method: 'POST', url: API });
+    expect(req.request.body).toEqual(draft());
+    req.flush(dto('new', { name: 'Storm' }));
+
+    const result = await saving;
+    expect(result.ok).toBe(true);
+    expect(service.byId('new')?.name).toBe('Storm');
+  });
+
+  it('updates in place when an id is given', async () => {
+    await loadWith([dto('a')]);
+    const saving = service.save({ ...draft(), name: 'Renamed' }, 'a');
+    http.expectOne({ method: 'PUT', url: `${API}/a` }).flush(dto('a', { name: 'Renamed' }));
+    await saving;
+
     expect(service.loadouts()).toHaveLength(1);
     expect(service.byId('a')?.name).toBe('Renamed');
   });
 
-  it(`refuses a new loadout past ${MAX_LOADOUTS_PER_FRAME} per frame`, () => {
-    for (let i = 0; i < MAX_LOADOUTS_PER_FRAME; i++) service.save(loadout(`v${i}`));
-    expect(service.canAddLoadout('Volt')).toBe(false);
-    expect(service.save(loadout('extra'))).toBe(false);
-    expect(service.byFrame('Volt')).toHaveLength(MAX_LOADOUTS_PER_FRAME);
+  it('turns a 409 into a limit result with the server message', async () => {
+    await loadWith([]);
+    const saving = service.save(draft());
+    http
+      .expectOne(API)
+      .flush(
+        { title: 'Loadout limit reached', detail: 'Volt already has 6 loadouts' },
+        { status: 409, statusText: 'Conflict' },
+      );
+
+    expect(await saving).toEqual({
+      ok: false,
+      reason: 'limit',
+      message: 'Volt already has 6 loadouts',
+    });
   });
 
-  it('still allows editing when a frame is at the cap', () => {
-    for (let i = 0; i < MAX_LOADOUTS_PER_FRAME; i++) service.save(loadout(`v${i}`));
-    expect(service.save({ ...loadout('v0'), name: 'Edited' })).toBe(true);
+  it('flips a favorite immediately and reverts if the server fails', async () => {
+    await loadWith([dto('a')]);
+    const toggling = service.toggleFav('a');
+    expect(service.byId('a')?.fav).toBe(true); // optimistic
+
+    http.expectOne(`${API}/a/favorite`).flush(null, { status: 500, statusText: 'Server Error' });
+    await toggling;
+    expect(service.byId('a')?.fav).toBe(false);
   });
 
-  it('toggles favorites and deletes', () => {
-    service.save(loadout('a'));
-    service.toggleFav('a');
-    expect(service.byId('a')?.fav).toBe(true);
-    service.delete('a');
+  it('removes a loadout after the server confirms the delete', async () => {
+    await loadWith([dto('a')]);
+    const deleting = service.delete('a');
+    http
+      .expectOne({ method: 'DELETE', url: `${API}/a` })
+      .flush(null, { status: 204, statusText: '' });
+
+    expect(await deleting).toBe(true);
     expect(service.byId('a')).toBeUndefined();
   });
 
-  it('persists changes to localStorage', () => {
-    service.save(loadout('a'));
-    TestBed.tick();
-    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY)!) as Loadout[];
-    expect(stored.map((l) => l.id)).toEqual(['a']);
-  });
+  describe('importing loadouts saved in the browser', () => {
+    function withBrowserSaved(key: string, items: unknown[]) {
+      TestBed.resetTestingModule();
+      localStorage.setItem(key, JSON.stringify(items));
+      setup();
+    }
 
-  it('starts empty when stored data is corrupt', () => {
-    TestBed.resetTestingModule();
-    localStorage.setItem(STORAGE_KEY, '{not json');
-    expect(TestBed.inject(LoadoutService).loadouts()).toEqual([]);
-  });
-
-  describe('v1 storage migration', () => {
-    beforeEach(() => TestBed.resetTestingModule());
-
-    it('fills in color state from the old 4-color summary and moves to the v2 key', () => {
-      const v1 = [
+    it('reads v1 storage, keeping its colors, and clears it after import', async () => {
+      withBrowserSaved('warframe-runway.loadouts.v1', [
         {
           id: 'old',
           frame: 'Volt',
           name: 'Old',
           creator: 'Tenno',
-          fav: true,
+          fav: false,
           edited: '',
           colors: ['#111111', '#222222', '#333333', '#444444'],
         },
-      ];
-      localStorage.setItem(LEGACY_KEY_V1, JSON.stringify(v1));
+      ]);
+      expect(service.browserSavedCount()).toBe(1);
 
-      const [migrated] = TestBed.inject(LoadoutService).loadouts();
-      expect(summaryColors(migrated.colorState)).toEqual([
+      const importing = service.importBrowserSaved();
+      const req = http.expectOne({ method: 'POST', url: API });
+      expect(summaryColors(req.request.body.colorState)).toEqual([
         '#111111',
         '#222222',
         '#333333',
         '#444444',
       ]);
-      expect(migrated.attachments).toEqual(emptyAttachments());
-      expect(migrated).not.toHaveProperty('colors');
-      expect(localStorage.getItem(LEGACY_KEY_V1)).toBeNull();
+      req.flush(dto('server-id'));
+
+      expect(await importing).toBe(1);
+      expect(service.browserSavedCount()).toBe(0);
+      expect(localStorage.getItem('warframe-runway.loadouts.v1')).toBeNull();
     });
 
-    it('keeps full color state that v1 loadouts already had', () => {
-      const colorState = defaultColorState();
-      colorState.primary.hex = '#abcdef';
-      localStorage.setItem(
-        LEGACY_KEY_V1,
-        JSON.stringify([{ ...loadout('a'), colors: ['#000000'], colorState }]),
-      );
-      expect(TestBed.inject(LoadoutService).byId('a')?.colorState.primary.hex).toBe('#abcdef');
-    });
-  });
+    it('keeps loadouts the server rejects so nothing is lost', async () => {
+      const local = {
+        id: 'x',
+        frame: 'Volt',
+        name: 'X',
+        creator: 'Tenno',
+        fav: false,
+        edited: '',
+        attachments: emptyAttachments(),
+        colorState: defaultColorState(),
+      };
+      withBrowserSaved('warframe-runway.loadouts.v2', [local]);
 
-  it('loads demo loadouts with full color state, so saving them keeps their colors', () => {
-    service.seedDemo();
-    const volt = service.byId('l1')!;
-    expect(summaryColors(volt.colorState)).toEqual(['#e8641a', '#3080c8', '#a0a0a0', '#f0c050']);
+      const importing = service.importBrowserSaved();
+      http.expectOne(API).flush({ detail: 'full' }, { status: 409, statusText: 'Conflict' });
+
+      expect(await importing).toBe(0);
+      expect(service.browserSavedCount()).toBe(1);
+      expect(JSON.parse(localStorage.getItem('warframe-runway.loadouts.v2')!)).toHaveLength(1);
+    });
   });
 });
