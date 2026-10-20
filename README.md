@@ -35,7 +35,7 @@ A full-stack fashion frame studio for Warframe — build color loadouts, generat
 | 5c | Refactor: feature folders, split the poster generator, ToastService, comment cleanup | ✅ |
 | 5d | Show frame images, fix favorites, 404 + unsaved-changes guard | ✅ |
 | 5e | Tests (Vitest), ESLint, Prettier, GitHub Actions CI | ✅ |
-| 6 | Spring Boot + PostgreSQL: entities, REST API, DTOs, validation, JUnit + Testcontainers | — |
+| 6 | Spring Boot + PostgreSQL: entities, REST API, DTOs, validation, JUnit + Testcontainers | ✅ |
 | 7 | Connect Angular to the API (HttpClient, interceptor, import existing localStorage loadouts) | — |
 | 8 | OAuth2 login (Discord / Google) with Spring Security | — |
 | 9 | S3 pre-signed image uploads (DB stores keys/URLs only) | — |
@@ -45,33 +45,60 @@ A full-stack fashion frame studio for Warframe — build color loadouts, generat
 ## Repository layout
 
 ```
-frontend/   Angular app
-backend/    Spring Boot API (coming in step 6)
+frontend/            Angular app
+backend/             Spring Boot API (Java 25, Maven)
+docker-compose.yml   Local PostgreSQL
+.env.example         Environment variables (copy to .env)
 ```
 
 ## Run locally
 
+**Prerequisites:** Node 24, Java 25, Docker Desktop.
+
 ```bash
+# 1. Database
+docker compose up -d
+
+# 2. API on http://localhost:8080
+cd backend
+./mvnw spring-boot:run
+
+# 3. Web app on http://localhost:4200
 cd frontend
 npm install
 npm start
-# open http://localhost:4200
 ```
 
 Checks (the same ones CI runs on every pull request):
 
 ```bash
-npm run lint
-npm run format:check
-npm run test:ci
-npm run build
+# frontend/
+npm run lint && npm run format:check && npm run test:ci && npm run build
+
+# backend/ (needs Docker running for the Testcontainers tests)
+./mvnw verify          # tests + format check
+./mvnw spotless:apply  # fix Java formatting
 ```
+
+## API
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/loadouts?frame=` | List loadouts, newest first; optional frame filter |
+| `GET` | `/api/loadouts/{id}` | One loadout |
+| `POST` | `/api/loadouts` | Create (`201` + `Location`); `409` past 6 per frame |
+| `PUT` | `/api/loadouts/{id}` | Replace name, frame, attachments and colors |
+| `PUT` | `/api/loadouts/{id}/favorite` | `{"favorite": true}` |
+| `DELETE` | `/api/loadouts/{id}` | Delete (`204`) |
+| `GET` | `/actuator/health` | Health check |
+
+Errors use [RFC 9457 problem details](https://www.rfc-editor.org/rfc/rfc9457) (`application/problem+json`); validation errors list each failing field.
 
 ## Architecture
 
 ```
 Angular components → LoadoutService → HTTP/REST → Spring Boot
-(Controller → Service → JPA Repository) → PostgreSQL
+(Controller → Service → JPA Repository) → PostgreSQL (schema managed by Flyway)
 
 Images: Angular → pre-signed URL from Spring Boot → direct upload to S3
 (PostgreSQL stores only the object key / URL)
