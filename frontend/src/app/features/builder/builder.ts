@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
   Attachments,
@@ -14,6 +14,7 @@ import { FrameCatalogService } from '../../core/services/frame-catalog.service';
 import { FrameSelector } from './frame-selector/frame-selector';
 import { LoadoutForm } from './loadout-form/loadout-form';
 import { ColorChannel } from './color-channel/color-channel';
+import { HasUnsavedChanges } from './builder.guards';
 import { PosterCanvas } from '../poster/poster-canvas/poster-canvas';
 
 /** Create or edit a loadout (`/builder`, `/builder/:id`, `/builder?frame=X`) and generate its poster. */
@@ -23,7 +24,7 @@ import { PosterCanvas } from '../poster/poster-canvas/poster-canvas';
   templateUrl: './builder.html',
   styleUrl: './builder.css',
 })
-export class Builder {
+export class Builder implements HasUnsavedChanges {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private store = inject(LoadoutService);
@@ -43,17 +44,43 @@ export class Builder {
   /** Shown inline if a save is rejected for being past the per-frame cap. */
   capMessage = signal('');
 
+  /** Draft as last loaded or saved; compared against the live draft to detect edits. */
+  private savedSnapshot: string;
+  /** Set once a save or delete succeeds, so the unsaved-changes guard lets us leave. */
+  private leaving = false;
+
   constructor() {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
-      const existing = this.store.byId(id);
-      if (existing) this.loadDraft(existing);
+      // loadoutExistsGuard has already confirmed the id exists.
+      this.loadDraft(this.store.byId(id)!);
     } else {
       const queryFrame = this.route.snapshot.queryParamMap.get('frame');
       if (queryFrame && this.catalog.frames().includes(queryFrame)) {
         this.frame.set(queryFrame);
       }
     }
+    this.savedSnapshot = this.snapshot();
+  }
+
+  hasUnsavedChanges(): boolean {
+    return !this.leaving && this.snapshot() !== this.savedSnapshot;
+  }
+
+  /** Browser-level warning when closing or reloading the tab with unsaved edits. */
+  @HostListener('window:beforeunload', ['$event'])
+  onBeforeUnload(e: BeforeUnloadEvent) {
+    if (this.hasUnsavedChanges()) e.preventDefault();
+  }
+
+  private snapshot(): string {
+    return JSON.stringify([
+      this.frame(),
+      this.name(),
+      this.creator(),
+      this.attachments(),
+      this.colorState(),
+    ]);
   }
 
   private loadDraft(l: Loadout) {
@@ -92,6 +119,7 @@ export class Builder {
       );
       return;
     }
+    this.leaving = true;
     this.router.navigateByUrl('/');
   }
 
@@ -101,9 +129,10 @@ export class Builder {
 
   delete() {
     const id = this.editingId();
-    if (id) {
-      this.store.delete(id);
-      this.router.navigateByUrl('/');
-    }
+    if (!id || !window.confirm(`Delete "${this.name() || 'this loadout'}"? This can't be undone.`))
+      return;
+    this.store.delete(id);
+    this.leaving = true;
+    this.router.navigateByUrl('/');
   }
 }
