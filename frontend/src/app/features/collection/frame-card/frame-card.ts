@@ -26,10 +26,18 @@ export class FrameCard {
   toggleFav = output<void>();
   hoverChange = output<boolean>();
 
-  get isEmpty(): boolean { return this.loadouts().length === 0; }
-  get first(): Loadout | undefined { return this.loadouts()[0]; }
-  get hasFav(): boolean { return this.loadouts().some(l => l.fav); }
-  get atCap(): boolean { return this.loadouts().length >= MAX_LOADOUTS_PER_FRAME; }
+  get isEmpty(): boolean {
+    return this.loadouts().length === 0;
+  }
+  get first(): Loadout | undefined {
+    return this.loadouts()[0];
+  }
+  get hasFav(): boolean {
+    return this.loadouts().some((l) => l.fav);
+  }
+  get atCap(): boolean {
+    return this.loadouts().length >= MAX_LOADOUTS_PER_FRAME;
+  }
 
   // ── 3D tilt ──────────────────────────────────────────────────
   rotX = 0;
@@ -55,7 +63,9 @@ export class FrameCard {
     this.glossY = (y / rect.height) * 100;
     this.hovering = true;
   }
-  onLeave() { this.hovering = false; }
+  onLeave() {
+    this.hovering = false;
+  }
 
   // ── Fan-out ──────────────────────────────────────────────────
   fanned = signal(false);
@@ -73,7 +83,7 @@ export class FrameCard {
     const pts: { x: number; y: number }[] = [];
     for (let i = 0; i < n; i++) {
       const deg = -90 + i * (360 / n);
-      const rad = deg * Math.PI / 180;
+      const rad = (deg * Math.PI) / 180;
       pts.push({ x: Math.cos(rad) * r, y: Math.sin(rad) * r });
     }
     return pts;

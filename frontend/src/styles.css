@@ -5,19 +5,23 @@
    ═══════════════════════════════════════════════════════════ */
 :root {
   --bg: #0a0303;
-  --surface: rgba(20, 8, 8, .85);
-  --surface2: rgba(35, 15, 10, .9);
+  --surface: rgba(20, 8, 8, 0.85);
+  --surface2: rgba(35, 15, 10, 0.9);
   --gold: #c8952a;
   --gold-light: #f0c050;
   --gold-dark: #7a5a18;
   --orange: #e8641a;
-  --border: rgba(200, 149, 42, .3);
-  --border-dim: rgba(200, 149, 42, .12);
+  --border: rgba(200, 149, 42, 0.3);
+  --border-dim: rgba(200, 149, 42, 0.12);
   --text: #e8d8c0;
   --text-dim: #8a7060;
 }
 
-* { margin: 0; padding: 0; box-sizing: border-box; }
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
 
 body {
   background: var(--bg);
@@ -33,21 +37,28 @@ body::before {
   position: fixed;
   inset: 0;
   background:
-    radial-gradient(ellipse 60% 50% at 50% 0%, rgba(107, 26, 26, .5), transparent 70%),
-    radial-gradient(ellipse 40% 40% at 80% 90%, rgba(150, 60, 0, .15), transparent 60%),
-    radial-gradient(ellipse 30% 30% at 10% 60%, rgba(200, 149, 42, .05), transparent 50%);
+    radial-gradient(ellipse 60% 50% at 50% 0%, rgba(107, 26, 26, 0.5), transparent 70%),
+    radial-gradient(ellipse 40% 40% at 80% 90%, rgba(150, 60, 0, 0.15), transparent 60%),
+    radial-gradient(ellipse 30% 30% at 10% 60%, rgba(200, 149, 42, 0.05), transparent 50%);
   pointer-events: none;
   z-index: 0;
 }
 
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: var(--bg); }
-::-webkit-scrollbar-thumb { background: var(--gold-dark); border-radius: 3px; }
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--gold-dark);
+  border-radius: 3px;
+}
 
 .section-label {
   font-family: 'Cinzel', serif;
   font-size: 10px;
-  letter-spacing: .35em;
+  letter-spacing: 0.35em;
   color: var(--gold);
   text-transform: uppercase;
   margin-bottom: 12px;

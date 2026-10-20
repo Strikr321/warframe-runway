@@ -2,7 +2,11 @@ import { dominantHueColor, hexToRgb, hsvToRgb, mixRgb, rgbToHsv, richenForGlow }
 
 /** Builds an ImageData-shaped object from a list of RGBA pixels. */
 function imageOf(pixels: [number, number, number, number][]): ImageData {
-  return { data: new Uint8ClampedArray(pixels.flat()), width: pixels.length, height: 1 } as ImageData;
+  return {
+    data: new Uint8ClampedArray(pixels.flat()),
+    width: pixels.length,
+    height: 1,
+  } as ImageData;
 }
 
 describe('color', () => {

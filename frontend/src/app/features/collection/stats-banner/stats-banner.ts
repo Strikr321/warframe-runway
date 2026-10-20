@@ -8,8 +8,8 @@ import { Component, input } from '@angular/core';
   styleUrl: './stats-banner.css',
 })
 export class StatsBanner {
-  styled = input.required<number>();     // frames with ≥1 loadout
-  total = input.required<number>();      // total frames in the game
+  styled = input.required<number>(); // frames with ≥1 loadout
+  total = input.required<number>(); // total frames in the game
   loadouts = input.required<number>();
   favorites = input.required<number>();
 

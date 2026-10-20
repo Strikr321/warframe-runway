@@ -1,7 +1,11 @@
 import { trimTransparentBounds } from './cutout-bounds';
 
 /** Transparent canvas with opaque rectangles painted in. */
-function canvasWith(width: number, height: number, rects: [number, number, number, number][]): ImageData {
+function canvasWith(
+  width: number,
+  height: number,
+  rects: [number, number, number, number][],
+): ImageData {
   const data = new Uint8ClampedArray(width * height * 4);
   for (const [x0, y0, w, h] of rects) {
     for (let y = y0; y < y0 + h; y++) {
@@ -25,17 +29,32 @@ describe('trimTransparentBounds', () => {
 
   it('keeps thin geometry that is attached to the body', () => {
     // A 1px-wide horn rising from the top of the body.
-    const b = trimTransparentBounds(canvasWith(200, 200, [[50, 40, 41, 81], [70, 5, 1, 35]]));
+    const b = trimTransparentBounds(
+      canvasWith(200, 200, [
+        [50, 40, 41, 81],
+        [70, 5, 1, 35],
+      ]),
+    );
     expect(b.y).toBeLessThanOrEqual(5);
   });
 
   it('keeps a large detached piece (e.g. a syandana split off by keying)', () => {
-    const b = trimTransparentBounds(canvasWith(200, 200, [[50, 40, 41, 81], [150, 60, 20, 20]]));
+    const b = trimTransparentBounds(
+      canvasWith(200, 200, [
+        [50, 40, 41, 81],
+        [150, 60, 20, 20],
+      ]),
+    );
     expect(b.x + b.w).toBeGreaterThanOrEqual(170);
   });
 
   it('includes the last row and column when there is no room to pad', () => {
-    expect(trimTransparentBounds(canvasWith(10, 10, [[0, 0, 10, 10]]))).toEqual({ x: 0, y: 0, w: 10, h: 10 });
+    expect(trimTransparentBounds(canvasWith(10, 10, [[0, 0, 10, 10]]))).toEqual({
+      x: 0,
+      y: 0,
+      w: 10,
+      h: 10,
+    });
   });
 
   it('returns the full image when nothing is visible', () => {

@@ -1,5 +1,12 @@
 import {
-  Component, ElementRef, HostListener, ViewChild, computed, inject, input, signal,
+  Component,
+  ElementRef,
+  HostListener,
+  ViewChild,
+  computed,
+  inject,
+  input,
+  signal,
 } from '@angular/core';
 import { Attachments, ChannelKey, ColorChannelState } from '../../../core/models/loadout.model';
 import { CHANNELS } from '../../../data/channels.data';
@@ -87,8 +94,20 @@ export class PosterCanvas {
   }
 
   // Set by updatePreview() from the upload zone's live pixel size.
-  previewStyle = signal<{ width: string; height: string; left: string; top: string }>({ width: '0', height: '0', left: '0', top: '0' });
-  cropOverlay = signal<{ leftDark: number; rightDarkLeft: number; rightDarkWidth: number; lineLeft: number; lineRight: number; zoneH: number } | null>(null);
+  previewStyle = signal<{ width: string; height: string; left: string; top: string }>({
+    width: '0',
+    height: '0',
+    left: '0',
+    top: '0',
+  });
+  cropOverlay = signal<{
+    leftDark: number;
+    rightDarkLeft: number;
+    rightDarkWidth: number;
+    lineLeft: number;
+    lineRight: number;
+    zoneH: number;
+  } | null>(null);
 
   // ── Layout + poster background ──────────────────────────────
   layoutKeys = LAYOUT_KEYS;
@@ -128,8 +147,13 @@ export class PosterCanvas {
     this.fileInputRef.nativeElement.click();
   }
 
-  onDragOver(e: DragEvent) { e.preventDefault(); this.dragOver.set(true); }
-  onDragLeave() { this.dragOver.set(false); }
+  onDragOver(e: DragEvent) {
+    e.preventDefault();
+    this.dragOver.set(true);
+  }
+  onDragLeave() {
+    this.dragOver.set(false);
+  }
   onDrop(e: DragEvent) {
     e.preventDefault();
     this.dragOver.set(false);
@@ -239,7 +263,10 @@ export class PosterCanvas {
     const cy = (zoneH - drawH) / 2 + this.imgPanY();
 
     this.previewStyle.set({
-      width: `${drawW}px`, height: `${drawH}px`, left: `${cx}px`, top: `${cy}px`,
+      width: `${drawW}px`,
+      height: `${drawH}px`,
+      left: `${cx}px`,
+      top: `${cy}px`,
     });
 
     const keepFraction = Math.max(0.1, this.imgCrop() / 100);
@@ -325,7 +352,7 @@ export class PosterCanvas {
   /** Swaps which color sits at the edges and which glows. */
   bgSwapped = signal(false);
   toggleBgSwap() {
-    this.bgSwapped.update(v => !v);
+    this.bgSwapped.update((v) => !v);
   }
 
   /** Back to the auto-detected glow color. */
@@ -363,7 +390,9 @@ export class PosterCanvas {
       layoutKey: this.selectedLayoutKey(),
       layout: this.selectedLayout(),
       imageDataUrl,
-      crop: imageDataUrl ? this.computeSourceCrop(this.imageNaturalWidth(), this.imageNaturalHeight()) : null,
+      crop: imageDataUrl
+        ? this.computeSourceCrop(this.imageNaturalWidth(), this.imageNaturalHeight())
+        : null,
       posterColor1: this.posterColor1(),
       posterColor2: this.posterColor2(),
       bgSwapped: this.bgSwapped(),
@@ -381,7 +410,8 @@ export class PosterCanvas {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = (this.frame() || 'warframe').toLowerCase().replace(/\s+/g, '-') + '-fashion-frame.png';
+      a.download =
+        (this.frame() || 'warframe').toLowerCase().replace(/\s+/g, '-') + '-fashion-frame.png';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -394,9 +424,13 @@ export class PosterCanvas {
     const canvas = this.canvasRef.nativeElement;
     try {
       canvas.toBlob((blob) => {
-        if (!blob) { this.showToast('Copy not available — use Download'); return; }
+        if (!blob) {
+          this.showToast('Copy not available — use Download');
+          return;
+        }
         if (navigator.clipboard && 'ClipboardItem' in window) {
-          navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
+          navigator.clipboard
+            .write([new ClipboardItem({ 'image/png': blob })])
             .then(() => this.showToast('Poster copied to clipboard!'))
             .catch(() => this.showToast('Copy blocked — use Download instead'));
         } else {
@@ -417,16 +451,19 @@ export class PosterCanvas {
       `  By: ${this.creator() || 'Tenno'}`,
       '',
       '  Loadout',
-      ...LOADOUT_FIELDS.map(f => `  ${f.label}: ${att[f.key] || '—'}`),
+      ...LOADOUT_FIELDS.map((f) => `  ${f.label}: ${att[f.key] || '—'}`),
       '  ─────────────────',
       '  Color Palette',
-      ...CHANNELS.map(ch => `  ${ch.name}: ${state[ch.key].label || '—'}`),
+      ...CHANNELS.map((ch) => `  ${ch.name}: ${state[ch.key].label || '—'}`),
       '}',
     ];
     const text = lines.join('\n');
 
     if (navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(text).then(() => this.showToast('Loadout copied!')).catch(() => this.fallbackCopy(text));
+      navigator.clipboard
+        .writeText(text)
+        .then(() => this.showToast('Loadout copied!'))
+        .catch(() => this.fallbackCopy(text));
     } else {
       this.fallbackCopy(text);
     }

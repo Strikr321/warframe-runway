@@ -30,13 +30,15 @@ describe('detectMonochromeBackground', () => {
   it('still detects the backdrop when the subject crosses part of the border', () => {
     // Subject wider than the image: it covers the left and right border strips' middles.
     const data = scene(200, GREEN, ORANGE, 0);
-    for (let y = 90; y < 100; y++) for (let x = 0; x < 200; x++) data.set([...ORANGE, 255], (y * 200 + x) * 4);
+    for (let y = 90; y < 100; y++)
+      for (let x = 0; x < 200; x++) data.set([...ORANGE, 255], (y * 200 + x) * 4);
     expect(detectMonochromeBackground(data, 200, 200)).not.toBeNull();
   });
 
   it('rejects a busy, non-uniform border', () => {
     const data = new Uint8ClampedArray(200 * 200 * 4);
-    for (let i = 0; i < data.length; i += 4) data.set([(i * 7) % 256, (i * 13) % 256, (i * 29) % 256, 255], i);
+    for (let i = 0; i < data.length; i += 4)
+      data.set([(i * 7) % 256, (i * 13) % 256, (i * 29) % 256, 255], i);
     expect(detectMonochromeBackground(data, 200, 200)).toBeNull();
   });
 });

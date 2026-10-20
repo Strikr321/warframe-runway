@@ -11,7 +11,10 @@ import { drawDivider, loadImgEl } from './draw-helpers';
  * CutoutPosterRenderer for cutouts; to be folded into it (roadmap 4d).
  */
 export class PhotoPosterRenderer {
-  constructor(private readonly canvas: HTMLCanvasElement, private readonly input: PosterInput) {}
+  constructor(
+    private readonly canvas: HTMLCanvasElement,
+    private readonly input: PosterInput,
+  ) {}
 
   async render(): Promise<void> {
     // Fonts must be loaded or the first render falls back to the system font.
@@ -19,7 +22,10 @@ export class PhotoPosterRenderer {
 
     const cv = this.canvas;
     const ctx = cv.getContext('2d')!;
-    const W = 900, MARGIN = 30, headerH = 120, imgTop = headerH + 10;
+    const W = 900,
+      MARGIN = 30,
+      headerH = 120,
+      imgTop = headerH + 10;
     const usableW = W - MARGIN * 2;
     const MIN_INFO_W = 160;
     const layout = this.input.layout;
@@ -35,20 +41,27 @@ export class PhotoPosterRenderer {
         if (!crop) return;
         const cropAspect = crop.srcW / crop.srcH;
         const H = this.computePosterHeight(crop, renderCfg, usableW, imgTop, MARGIN);
-        cv.width = W; cv.height = H;
+        cv.width = W;
+        cv.height = H;
 
-        const infoH = 280, gap = 14;
+        const infoH = 280,
+          gap = 14;
         const infoY = H - MARGIN - infoH;
         const availImgH = infoY - gap - imgTop;
-        const maxImgWidthFrac = Math.min(0.80, Math.max(0.55, cropAspect * 0.75));
-        const imgDisplayW = Math.min(Math.round(usableW * maxImgWidthFrac), Math.round(availImgH * cropAspect));
+        const maxImgWidthFrac = Math.min(0.8, Math.max(0.55, cropAspect * 0.75));
+        const imgDisplayW = Math.min(
+          Math.round(usableW * maxImgWidthFrac),
+          Math.round(availImgH * cropAspect),
+        );
         const imgDisplayH = Math.min(availImgH, Math.round(imgDisplayW / cropAspect));
         const imgX = MARGIN + (usableW - imgDisplayW) / 2;
 
         this.drawBackground(ctx, W, H);
         this.drawDecorations(ctx, W, H);
         this.drawHeader(ctx, W);
-        this.drawMaskedImage(ctx, img, crop, imgX, imgTop, imgDisplayW, imgDisplayH, (ox, w, h) => this.drawNameBarOverlay(ox, w, h));
+        this.drawMaskedImage(ctx, img, crop, imgX, imgTop, imgDisplayW, imgDisplayH, (ox, w, h) =>
+          this.drawNameBarOverlay(ox, w, h),
+        );
 
         const divY = imgTop + imgDisplayH + gap / 2;
         drawDivider(ctx, MARGIN, W - MARGIN, divY);
@@ -56,8 +69,10 @@ export class PhotoPosterRenderer {
         this.drawDecorations(ctx, W, H);
       } else {
         const H = 1020;
-        cv.width = W; cv.height = H;
-        const infoH = 280, gap = 14;
+        cv.width = W;
+        cv.height = H;
+        const infoH = 280,
+          gap = 14;
         const infoY = H - MARGIN - infoH;
         const availImgH = infoY - gap - imgTop;
         const imgW = Math.round(usableW * 0.65);
@@ -70,7 +85,6 @@ export class PhotoPosterRenderer {
         drawDivider(ctx, MARGIN, W - MARGIN, imgTop + availImgH + gap / 2);
         this.drawInfoPanelSplit(ctx, MARGIN + 10, infoY, usableW - 20, infoH);
       }
-
     } else if (renderCfg.infoPosition === 'split') {
       // ── CENTER SPLIT ──
       if (dataUrl) {
@@ -80,7 +94,8 @@ export class PhotoPosterRenderer {
         const cropAspect = crop.srcW / crop.srcH;
         const splits = this.computeCenterSplit(cropAspect);
         const H = this.computePosterHeight(crop, renderCfg, usableW, imgTop, MARGIN);
-        cv.width = W; cv.height = H;
+        cv.width = W;
+        cv.height = H;
 
         const nameY = H - MARGIN - 80;
         const mainH = nameY - 8 - imgTop;
@@ -94,17 +109,20 @@ export class PhotoPosterRenderer {
         this.drawHeader(ctx, W);
         this.drawMaskedImage(ctx, img, crop, imgX, imgTop, size.w, size.h);
 
-        const leftX = MARGIN + 5, leftW = imgX - leftX - gap;
+        const leftX = MARGIN + 5,
+          leftW = imgX - leftX - gap;
         if (leftW > 50) this.drawLoadoutSection(ctx, leftX, imgTop + 20, leftW, size.h - 40);
-        const rightX = imgX + size.w + gap, rightW = (W - MARGIN) - rightX - 5;
+        const rightX = imgX + size.w + gap,
+          rightW = W - MARGIN - rightX - 5;
         if (rightW > 50) this.drawColorsSection(ctx, rightX, imgTop + 20, rightW, size.h - 40);
 
         this.drawNameBar(ctx, W, MARGIN, nameY, renderCfg.namePosition);
         this.drawDecorations(ctx, W, H);
       } else {
         const H = 1120;
-        cv.width = W; cv.height = H;
-        const mainH = (H - MARGIN) - 80 - 8 - imgTop;
+        cv.width = W;
+        cv.height = H;
+        const mainH = H - MARGIN - 80 - 8 - imgTop;
         const gap = 15;
         const centerW = Math.round(usableW * 0.52);
         const imgW = Math.round(centerW * 0.8);
@@ -114,13 +132,14 @@ export class PhotoPosterRenderer {
         this.drawDecorations(ctx, W, H);
         this.drawHeader(ctx, W);
         this.drawPlaceholder(ctx, imgX, imgTop, imgW, mainH);
-        const leftX = MARGIN + 5, leftW = imgX - leftX - gap;
+        const leftX = MARGIN + 5,
+          leftW = imgX - leftX - gap;
         if (leftW > 50) this.drawLoadoutSection(ctx, leftX, imgTop + 20, leftW, mainH - 40);
-        const rightX = imgX + imgW + gap, rightW = (W - MARGIN) - rightX - 5;
+        const rightX = imgX + imgW + gap,
+          rightW = W - MARGIN - rightX - 5;
         if (rightW > 50) this.drawColorsSection(ctx, rightX, imgTop + 20, rightW, mainH - 40);
         this.drawNameBar(ctx, W, MARGIN, imgTop + mainH + 4, renderCfg.namePosition);
       }
-
     } else {
       // ── LEFT / RIGHT ──
       const isRight = renderCfg.imageAlign === 'right';
@@ -132,16 +151,20 @@ export class PhotoPosterRenderer {
         const cropAspect = crop.srcW / crop.srcH;
         const splits = this.computeSideSplit(cropAspect);
         const H = this.computePosterHeight(crop, renderCfg, usableW, imgTop, MARGIN);
-        cv.width = W; cv.height = H;
+        cv.width = W;
+        cv.height = H;
 
         const nameY = H - MARGIN - 80;
         const mainH = nameY - 8 - imgTop;
         let imgW = Math.round(usableW * splits.imageFraction) - gap / 2;
         let infoW = usableW - imgW - gap;
-        if (infoW < MIN_INFO_W) { infoW = MIN_INFO_W; imgW = usableW - infoW - gap; }
+        if (infoW < MIN_INFO_W) {
+          infoW = MIN_INFO_W;
+          imgW = usableW - infoW - gap;
+        }
         const size = this.computePosterImageSize(crop, mainH, Math.round(imgW * 0.6), imgW);
-        const imgX = isRight ? (W - MARGIN - size.w) : MARGIN;
-        const infoX = isRight ? MARGIN : (MARGIN + size.w + gap);
+        const imgX = isRight ? W - MARGIN - size.w : MARGIN;
+        const infoX = isRight ? MARGIN : MARGIN + size.w + gap;
         infoW = usableW - size.w - gap;
 
         this.drawBackground(ctx, W, H);
@@ -153,13 +176,17 @@ export class PhotoPosterRenderer {
         this.drawDecorations(ctx, W, H);
       } else {
         const H = 1120;
-        cv.width = W; cv.height = H;
-        const mainH = (H - MARGIN) - 80 - 8 - imgTop;
+        cv.width = W;
+        cv.height = H;
+        const mainH = H - MARGIN - 80 - 8 - imgTop;
         let imgW = Math.round(usableW * 0.55);
         let infoW = usableW - imgW - gap;
-        if (infoW < MIN_INFO_W) { infoW = MIN_INFO_W; imgW = usableW - infoW - gap; }
-        const imgX = isRight ? (W - MARGIN - imgW) : MARGIN;
-        const infoX = isRight ? MARGIN : (MARGIN + imgW + gap);
+        if (infoW < MIN_INFO_W) {
+          infoW = MIN_INFO_W;
+          imgW = usableW - infoW - gap;
+        }
+        const imgX = isRight ? W - MARGIN - imgW : MARGIN;
+        const infoX = isRight ? MARGIN : MARGIN + imgW + gap;
 
         this.drawBackground(ctx, W, H);
         this.drawDecorations(ctx, W, H);
@@ -175,18 +202,19 @@ export class PhotoPosterRenderer {
     const c1 = this.input.posterColor1?.hex ?? '#3a0808';
     const c2 = this.input.posterColor2?.hex ?? '#080202';
 
-    const angle = 180 * Math.PI / 180; // vertical
-    const mx = W / 2, my = H / 2;
+    const angle = (180 * Math.PI) / 180; // vertical
+    const mx = W / 2,
+      my = H / 2;
     const len = Math.max(W, H);
-    const x1 = mx - Math.sin(angle) * len / 2;
-    const y1 = my - Math.cos(angle) * len / 2;
-    const x2 = mx + Math.sin(angle) * len / 2;
-    const y2 = my + Math.cos(angle) * len / 2;
+    const x1 = mx - (Math.sin(angle) * len) / 2;
+    const y1 = my - (Math.cos(angle) * len) / 2;
+    const x2 = mx + (Math.sin(angle) * len) / 2;
+    const y2 = my + (Math.cos(angle) * len) / 2;
 
     const bg = ctx.createLinearGradient(x1, y1, x2, y2);
     bg.addColorStop(0, rgbaStr(c1, 1));
-    bg.addColorStop(0.30, rgbaStr(c1, 1));
-    bg.addColorStop(0.70, rgbaStr(c2, 1));
+    bg.addColorStop(0.3, rgbaStr(c1, 1));
+    bg.addColorStop(0.7, rgbaStr(c2, 1));
     bg.addColorStop(1, rgbaStr(c2, 1));
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, W, H);
@@ -212,8 +240,10 @@ export class PhotoPosterRenderer {
 
     const diamondSize = 5;
     const corners: [number, number][] = [
-      [diamondCenter, diamondCenter], [W - diamondCenter, diamondCenter],
-      [diamondCenter, H - diamondCenter], [W - diamondCenter, H - diamondCenter],
+      [diamondCenter, diamondCenter],
+      [W - diamondCenter, diamondCenter],
+      [diamondCenter, H - diamondCenter],
+      [W - diamondCenter, H - diamondCenter],
     ];
     corners.forEach(([x, y]) => {
       ctx.save();
@@ -254,12 +284,18 @@ export class PhotoPosterRenderer {
 
   /** Draws the cropped screenshot with soft-rounded, feathered edges. */
   private drawMaskedImage(
-    ctx: CanvasRenderingContext2D, img: HTMLImageElement, crop: SourceCrop,
-    destX: number, destY: number, destW: number, destH: number,
+    ctx: CanvasRenderingContext2D,
+    img: HTMLImageElement,
+    crop: SourceCrop,
+    destX: number,
+    destY: number,
+    destW: number,
+    destH: number,
     preMaskDraw?: (ox: CanvasRenderingContext2D, w: number, h: number) => void,
   ) {
     const offCv = document.createElement('canvas');
-    offCv.width = destW; offCv.height = destH;
+    offCv.width = destW;
+    offCv.height = destH;
     const ox = offCv.getContext('2d')!;
 
     const edgePct = 0.04;
@@ -268,7 +304,8 @@ export class PhotoPosterRenderer {
     const cornerR = Math.max(edgeW, edgeH);
 
     const maskCv = document.createElement('canvas');
-    maskCv.width = destW; maskCv.height = destH;
+    maskCv.width = destW;
+    maskCv.height = destH;
     const mCtx = maskCv.getContext('2d')!;
 
     mCtx.fillStyle = '#fff';
@@ -288,13 +325,37 @@ export class PhotoPosterRenderer {
     mCtx.globalCompositeOperation = 'destination-out';
     const fades: { grad: CanvasGradient; rect: [number, number, number, number] }[] = [
       { grad: mCtx.createLinearGradient(0, 0, edgeW, 0), rect: [0, 0, edgeW, destH] },
-      { grad: mCtx.createLinearGradient(destW - edgeW, 0, destW, 0), rect: [destW - edgeW, 0, edgeW, destH] },
+      {
+        grad: mCtx.createLinearGradient(destW - edgeW, 0, destW, 0),
+        rect: [destW - edgeW, 0, edgeW, destH],
+      },
       { grad: mCtx.createLinearGradient(0, 0, 0, edgeH), rect: [0, 0, destW, edgeH] },
-      { grad: mCtx.createLinearGradient(0, destH - edgeH, 0, destH), rect: [0, destH - edgeH, destW, edgeH] },
+      {
+        grad: mCtx.createLinearGradient(0, destH - edgeH, 0, destH),
+        rect: [0, destH - edgeH, destW, edgeH],
+      },
     ];
     fades.forEach((f, i) => {
-      f.grad.addColorStop(0, i < 2 ? (i === 0 ? 'rgba(0,0,0,1)' : 'rgba(0,0,0,0)') : (i === 2 ? 'rgba(0,0,0,1)' : 'rgba(0,0,0,0)'));
-      f.grad.addColorStop(1, i < 2 ? (i === 0 ? 'rgba(0,0,0,0)' : 'rgba(0,0,0,1)') : (i === 2 ? 'rgba(0,0,0,0)' : 'rgba(0,0,0,1)'));
+      f.grad.addColorStop(
+        0,
+        i < 2
+          ? i === 0
+            ? 'rgba(0,0,0,1)'
+            : 'rgba(0,0,0,0)'
+          : i === 2
+            ? 'rgba(0,0,0,1)'
+            : 'rgba(0,0,0,0)',
+      );
+      f.grad.addColorStop(
+        1,
+        i < 2
+          ? i === 0
+            ? 'rgba(0,0,0,0)'
+            : 'rgba(0,0,0,1)'
+          : i === 2
+            ? 'rgba(0,0,0,0)'
+            : 'rgba(0,0,0,1)',
+      );
       mCtx.fillStyle = f.grad;
       mCtx.fillRect(...f.rect);
     });
@@ -309,9 +370,16 @@ export class PhotoPosterRenderer {
     ctx.drawImage(offCv, destX, destY);
   }
 
-  private drawLoadoutSection(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, forcedRowH?: number) {
+  private drawLoadoutSection(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    forcedRowH?: number,
+  ) {
     const att = this.input.attachments;
-    const fields = LOADOUT_FIELDS.map(f => ({ label: f.label, val: att[f.key] || '—' }));
+    const fields = LOADOUT_FIELDS.map((f) => ({ label: f.label, val: att[f.key] || '—' }));
 
     ctx.font = 'bold 11px Cinzel, serif';
     ctx.fillStyle = 'rgba(200,149,42,0.7)';
@@ -319,8 +387,11 @@ export class PhotoPosterRenderer {
     ctx.fillText('LOADOUT', x, y + 14);
 
     ctx.beginPath();
-    ctx.moveTo(x, y + 20); ctx.lineTo(x + w, y + 20);
-    ctx.strokeStyle = 'rgba(200,149,42,0.3)'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.moveTo(x, y + 20);
+    ctx.lineTo(x + w, y + 20);
+    ctx.strokeStyle = 'rgba(200,149,42,0.3)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
 
     const contentTop = y + 28;
     const contentH = h - 28;
@@ -342,13 +413,23 @@ export class PhotoPosterRenderer {
 
       if (i < fields.length - 1) {
         ctx.beginPath();
-        ctx.moveTo(x, fy + rowH - 2); ctx.lineTo(x + w, fy + rowH - 2);
-        ctx.strokeStyle = 'rgba(200,149,42,0.12)'; ctx.lineWidth = 1; ctx.stroke();
+        ctx.moveTo(x, fy + rowH - 2);
+        ctx.lineTo(x + w, fy + rowH - 2);
+        ctx.strokeStyle = 'rgba(200,149,42,0.12)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
       }
     });
   }
 
-  private drawColorsSection(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, forcedRowH?: number) {
+  private drawColorsSection(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    forcedRowH?: number,
+  ) {
     const swatchR = 8;
     ctx.font = 'bold 11px Cinzel, serif';
     ctx.fillStyle = 'rgba(200,149,42,0.7)';
@@ -356,8 +437,11 @@ export class PhotoPosterRenderer {
     ctx.fillText('COLOR PALETTE', x, y + 14);
 
     ctx.beginPath();
-    ctx.moveTo(x, y + 20); ctx.lineTo(x + w, y + 20);
-    ctx.strokeStyle = 'rgba(200,149,42,0.3)'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.moveTo(x, y + 20);
+    ctx.lineTo(x + w, y + 20);
+    ctx.strokeStyle = 'rgba(200,149,42,0.3)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
 
     const contentTop = y + 28;
     const contentH = h - 28;
@@ -372,7 +456,9 @@ export class PhotoPosterRenderer {
       ctx.arc(x + swatchR + 1, cy + 12, swatchR, 0, Math.PI * 2);
       ctx.fillStyle = s.hex;
       ctx.fill();
-      ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
 
       const textOffX = swatchR * 2 + 8;
       ctx.font = 'bold 12px Cinzel, serif';
@@ -386,8 +472,11 @@ export class PhotoPosterRenderer {
 
       if (i < CHANNELS.length - 1) {
         ctx.beginPath();
-        ctx.moveTo(x, cy + chRowH - 2); ctx.lineTo(x + w, cy + chRowH - 2);
-        ctx.strokeStyle = 'rgba(200,149,42,0.12)'; ctx.lineWidth = 1; ctx.stroke();
+        ctx.moveTo(x, cy + chRowH - 2);
+        ctx.lineTo(x + w, cy + chRowH - 2);
+        ctx.strokeStyle = 'rgba(200,149,42,0.12)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
       }
     });
   }
@@ -400,7 +489,13 @@ export class PhotoPosterRenderer {
     this.drawColorsSection(ctx, x, colorsY, w, colorsH);
   }
 
-  private drawInfoPanelSplit(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
+  private drawInfoPanelSplit(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+  ) {
     const gap = 30;
     const halfW = Math.floor((w - gap) / 2);
     const numRows = Math.max(LOADOUT_FIELDS.length, CHANNELS.length);
@@ -410,7 +505,13 @@ export class PhotoPosterRenderer {
     this.drawColorsSection(ctx, x + halfW + gap, y, halfW, h, sharedRowH);
   }
 
-  private drawNameBar(ctx: CanvasRenderingContext2D, W: number, MARGIN: number, nameBarTop: number, align: string) {
+  private drawNameBar(
+    ctx: CanvasRenderingContext2D,
+    W: number,
+    MARGIN: number,
+    nameBarTop: number,
+    align: string,
+  ) {
     const creator = this.input.creator || 'Tenno';
     const loadoutName = this.input.name;
     const frameName = this.input.frame.toUpperCase();
@@ -418,17 +519,34 @@ export class PhotoPosterRenderer {
 
     const dg = ctx.createLinearGradient(MARGIN, 0, W - MARGIN, 0);
     if (isCompact) {
-      dg.addColorStop(0, 'rgba(200,149,42,0.3)'); dg.addColorStop(0.05, '#c8952a');
-      dg.addColorStop(0.95, '#c8952a'); dg.addColorStop(1, 'rgba(200,149,42,0.3)');
+      dg.addColorStop(0, 'rgba(200,149,42,0.3)');
+      dg.addColorStop(0.05, '#c8952a');
+      dg.addColorStop(0.95, '#c8952a');
+      dg.addColorStop(1, 'rgba(200,149,42,0.3)');
     } else {
-      dg.addColorStop(0, '#c8952a'); dg.addColorStop(0.5, 'rgba(200,149,42,0.4)'); dg.addColorStop(1, 'transparent');
+      dg.addColorStop(0, '#c8952a');
+      dg.addColorStop(0.5, 'rgba(200,149,42,0.4)');
+      dg.addColorStop(1, 'transparent');
     }
     ctx.beginPath();
-    ctx.moveTo(MARGIN, nameBarTop - 4); ctx.lineTo(W - MARGIN, nameBarTop - 4);
-    ctx.strokeStyle = dg; ctx.lineWidth = isCompact ? 1.5 : 1; ctx.stroke();
+    ctx.moveTo(MARGIN, nameBarTop - 4);
+    ctx.lineTo(W - MARGIN, nameBarTop - 4);
+    ctx.strokeStyle = dg;
+    ctx.lineWidth = isCompact ? 1.5 : 1;
+    ctx.stroke();
 
-    const textAlign = align === 'bottom-right' ? 'right' : (align === 'bottom-center' || align === 'middle') ? 'center' : 'left';
-    const textX = align === 'bottom-right' ? W - MARGIN - 10 : (align === 'bottom-center' || align === 'middle') ? W / 2 : MARGIN + 10;
+    const textAlign =
+      align === 'bottom-right'
+        ? 'right'
+        : align === 'bottom-center' || align === 'middle'
+          ? 'center'
+          : 'left';
+    const textX =
+      align === 'bottom-right'
+        ? W - MARGIN - 10
+        : align === 'bottom-center' || align === 'middle'
+          ? W / 2
+          : MARGIN + 10;
 
     const nameSize = isCompact ? 40 : 48;
     const nameY = nameBarTop + (isCompact ? 32 : 40);
@@ -436,7 +554,8 @@ export class PhotoPosterRenderer {
     const loadoutY = nameBarTop + (isCompact ? 66 : 74);
 
     ctx.save();
-    ctx.shadowColor = 'rgba(240,192,80,.5)'; ctx.shadowBlur = 15;
+    ctx.shadowColor = 'rgba(240,192,80,.5)';
+    ctx.shadowBlur = 15;
     ctx.font = `bold ${nameSize}px Cinzel, serif`;
     ctx.fillStyle = '#f0c050';
     ctx.textAlign = textAlign as CanvasTextAlign;
@@ -464,11 +583,14 @@ export class PhotoPosterRenderer {
     const overlayH = Math.min(destH * 0.35, 160);
     const overlayY = destH - overlayH;
     const grad = ctx.createLinearGradient(0, overlayY, 0, destH);
-    grad.addColorStop(0, 'rgba(0,0,0,0)'); grad.addColorStop(0.3, 'rgba(0,0,0,0.35)'); grad.addColorStop(1, 'rgba(0,0,0,0.75)');
+    grad.addColorStop(0, 'rgba(0,0,0,0)');
+    grad.addColorStop(0.3, 'rgba(0,0,0,0.35)');
+    grad.addColorStop(1, 'rgba(0,0,0,0.75)');
     ctx.fillStyle = grad;
     ctx.fillRect(0, overlayY, destW, overlayH);
 
-    const padLeft = 30, padBottom = 42;
+    const padLeft = 30,
+      padBottom = 42;
     const bottomEdge = destH - padBottom;
     let currentY = bottomEdge;
 
@@ -487,7 +609,8 @@ export class PhotoPosterRenderer {
     currentY -= 10;
 
     ctx.save();
-    ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 12;
+    ctx.shadowColor = 'rgba(0,0,0,.6)';
+    ctx.shadowBlur = 12;
     ctx.font = 'bold 38px Cinzel, serif';
     ctx.fillStyle = '#f0c050';
     ctx.textAlign = 'left';
@@ -495,8 +618,15 @@ export class PhotoPosterRenderer {
     ctx.restore();
   }
 
-  private drawPlaceholder(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
-    ctx.strokeStyle = 'rgba(200,149,42,.25)'; ctx.lineWidth = 1;
+  private drawPlaceholder(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+  ) {
+    ctx.strokeStyle = 'rgba(200,149,42,.25)';
+    ctx.lineWidth = 1;
     ctx.strokeRect(x, y, w, h);
     ctx.font = '18px Cinzel, serif';
     ctx.fillStyle = 'rgba(200,149,42,.35)';
@@ -508,8 +638,14 @@ export class PhotoPosterRenderer {
     const cropAspect = crop.srcW / crop.srcH;
     let w = Math.round(maxH * cropAspect);
     let h = maxH;
-    if (w > maxW) { w = maxW; h = Math.round(w / cropAspect); }
-    if (w < minW) { w = minW; h = Math.round(w / cropAspect); }
+    if (w > maxW) {
+      w = maxW;
+      h = Math.round(w / cropAspect);
+    }
+    if (w < minW) {
+      w = minW;
+      h = Math.round(w / cropAspect);
+    }
     if (h > maxH) h = maxH;
     return { w, h };
   }
@@ -520,16 +656,22 @@ export class PhotoPosterRenderer {
   }
 
   private computeCenterSplit(cropAspect: number) {
-    const centerFrac = Math.min(0.68, Math.max(0.42, 0.30 + cropAspect * 0.35));
+    const centerFrac = Math.min(0.68, Math.max(0.42, 0.3 + cropAspect * 0.35));
     const sideFrac = (1.0 - centerFrac) / 2;
     return { centerFraction: centerFrac, sideFraction: sideFrac };
   }
 
-  private computePosterHeight(crop: SourceCrop | null, renderCfg: PosterLayout['render'], usableW: number, imgTop: number, MARGIN: number): number {
+  private computePosterHeight(
+    crop: SourceCrop | null,
+    renderCfg: PosterLayout['render'],
+    usableW: number,
+    imgTop: number,
+    MARGIN: number,
+  ): number {
     const cropAspect = crop ? crop.srcW / crop.srcH : 0.6;
 
     if (renderCfg.infoPosition === 'below') {
-      const maxImgWidthFrac = Math.min(0.80, Math.max(0.55, cropAspect * 0.75));
+      const maxImgWidthFrac = Math.min(0.8, Math.max(0.55, cropAspect * 0.75));
       const imgDisplayW = Math.round(usableW * maxImgWidthFrac);
       const imgDisplayH = Math.round(imgDisplayW / cropAspect);
       return imgTop + imgDisplayH + 14 + 280 + MARGIN;
