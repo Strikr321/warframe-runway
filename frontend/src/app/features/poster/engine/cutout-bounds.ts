@@ -53,6 +53,6 @@ export function trimTransparentBounds(imgData: ImageData): { x: number; y: numbe
 
   const padX = Math.round((maxX - minX) * 0.025), padY = Math.round((maxY - minY) * 0.025);
   const x = Math.max(0, minX - padX), y = Math.max(0, minY - padY);
-  const w = Math.min(width, maxX + padX) - x, h = Math.min(height, maxY + padY) - y;
+  const w = Math.min(width, maxX + padX + 1) - x, h = Math.min(height, maxY + padY + 1) - y;
   return { x, y, w, h };
 }
