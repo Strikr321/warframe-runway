@@ -4,11 +4,25 @@ import dev.sublok.runway.loadout.LoadoutDtos.AttachmentsDto;
 import dev.sublok.runway.loadout.LoadoutDtos.ColorChoiceDto;
 import dev.sublok.runway.loadout.LoadoutDtos.ColorStateDto;
 import dev.sublok.runway.loadout.LoadoutDtos.LoadoutRequest;
+import java.util.UUID;
 
 /** Valid request payloads for tests, as objects and as JSON. */
-final class LoadoutFixtures {
+public final class LoadoutFixtures {
 
     private LoadoutFixtures() {}
+
+    /** A complete, unsaved loadout entity owned by {@code ownerId} (null = from before accounts). */
+    public static Loadout entity(UUID ownerId, String frame, String name) {
+        LoadoutRequest request = request(frame, name);
+        Loadout loadout = new Loadout(ownerId, frame);
+        loadout.update(
+                frame,
+                name,
+                request.creator(),
+                LoadoutMapper.toAttachments(request.attachments()),
+                LoadoutMapper.toColors(request.colorState()));
+        return loadout;
+    }
 
     static LoadoutRequest request(String frame, String name) {
         ColorChoiceDto gold = new ColorChoiceDto("Tenno", 0, 0, "#c8a030", "Tenno A1");

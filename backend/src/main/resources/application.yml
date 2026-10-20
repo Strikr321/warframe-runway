@@ -1,6 +1,9 @@
 spring:
   application:
     name: runway-api
+  # Local secrets live in the git-ignored ../.env (see .env.example); real deployments set env vars.
+  config:
+    import: optional:file:../.env[.properties]
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/runway}
     username: ${DB_USER:runway}
@@ -14,6 +17,16 @@ spring:
   mvc:
     problemdetails:
       enabled: true
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            scope: openid,profile,email
+            # Must match an "Authorized redirect URI" on the Google OAuth client.
+            redirect-uri: ${OAUTH2_REDIRECT_BASE_URL:http://localhost:8080}/login/oauth2/code/{registrationId}
 
 management:
   endpoints:
@@ -22,5 +35,7 @@ management:
         include: health,info
 
 runway:
+  # Where the browser goes after signing in.
+  frontend-url: ${FRONTEND_URL:http://localhost:4200}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}

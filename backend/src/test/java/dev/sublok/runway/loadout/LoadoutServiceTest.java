@@ -25,11 +25,13 @@ class LoadoutServiceTest {
     @InjectMocks
     LoadoutService service;
 
+    final UUID owner = UUID.randomUUID();
+
     @Test
     void createRejectsAFrameAtTheCap() {
-        when(repository.countByFrame("Volt")).thenReturn((long) MAX_LOADOUTS_PER_FRAME);
+        when(repository.countByOwnerIdAndFrame(owner, "Volt")).thenReturn((long) MAX_LOADOUTS_PER_FRAME);
 
-        assertThatThrownBy(() -> service.create(LoadoutFixtures.request("Volt", "Seventh")))
+        assertThatThrownBy(() -> service.create(owner, LoadoutFixtures.request("Volt", "Seventh")))
                 .isInstanceOf(LoadoutLimitExceededException.class)
                 .hasMessageContaining("Volt");
         verify(repository, never()).saveAndFlush(any());
@@ -37,10 +39,10 @@ class LoadoutServiceTest {
 
     @Test
     void createTrimsInputAndMapsEveryChannel() {
-        when(repository.countByFrame("Volt")).thenReturn(0L);
+        when(repository.countByOwnerIdAndFrame(owner, "Volt")).thenReturn(0L);
         when(repository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        var created = service.create(LoadoutFixtures.request("Volt", "  Storm  "));
+        var created = service.create(owner, LoadoutFixtures.request("Volt", "  Storm  "));
 
         assertThat(created.name()).isEqualTo("Storm");
         assertThat(created.colorState().en2().hex()).isEqualTo("#c8a030");
@@ -50,36 +52,36 @@ class LoadoutServiceTest {
     @Test
     void updateWithinTheSameFrameIsAllowedAtTheCap() {
         Loadout existing = existing("Volt");
-        when(repository.findWithColorsById(existing.getId())).thenReturn(Optional.of(existing));
+        when(repository.findWithColorsByIdAndOwnerId(existing.getId(), owner)).thenReturn(Optional.of(existing));
         when(repository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        var updated = service.update(existing.getId(), LoadoutFixtures.request("Volt", "Renamed"));
+        var updated = service.update(owner, existing.getId(), LoadoutFixtures.request("Volt", "Renamed"));
 
         assertThat(updated.name()).isEqualTo("Renamed");
-        verify(repository, never()).countByFrame(any());
+        verify(repository, never()).countByOwnerIdAndFrame(any(), any());
     }
 
     @Test
     void movingALoadoutToAFullFrameIsRejected() {
         Loadout existing = existing("Volt");
-        when(repository.findWithColorsById(existing.getId())).thenReturn(Optional.of(existing));
-        when(repository.countByFrame("Mesa")).thenReturn((long) MAX_LOADOUTS_PER_FRAME);
+        when(repository.findWithColorsByIdAndOwnerId(existing.getId(), owner)).thenReturn(Optional.of(existing));
+        when(repository.countByOwnerIdAndFrame(owner, "Mesa")).thenReturn((long) MAX_LOADOUTS_PER_FRAME);
 
-        assertThatThrownBy(() -> service.update(existing.getId(), LoadoutFixtures.request("Mesa", "Moved")))
+        assertThatThrownBy(() -> service.update(owner, existing.getId(), LoadoutFixtures.request("Mesa", "Moved")))
                 .isInstanceOf(LoadoutLimitExceededException.class);
     }
 
     @Test
     void missingLoadoutIsNotFound() {
         UUID id = UUID.randomUUID();
-        when(repository.findWithColorsById(id)).thenReturn(Optional.empty());
+        when(repository.findWithColorsByIdAndOwnerId(id, owner)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.get(id)).isInstanceOf(LoadoutNotFoundException.class);
-        assertThatThrownBy(() -> service.delete(id)).isInstanceOf(LoadoutNotFoundException.class);
+        assertThatThrownBy(() -> service.get(owner, id)).isInstanceOf(LoadoutNotFoundException.class);
+        assertThatThrownBy(() -> service.delete(owner, id)).isInstanceOf(LoadoutNotFoundException.class);
     }
 
-    private static Loadout existing(String frame) {
-        Loadout loadout = new Loadout(frame);
+    private Loadout existing(String frame) {
+        Loadout loadout = new Loadout(owner, frame);
         var request = LoadoutFixtures.request(frame, "Original");
         loadout.update(
                 frame,

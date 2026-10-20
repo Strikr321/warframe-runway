@@ -7,7 +7,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Loadout use cases and business rules. Controllers call this; it is the only writer of loadouts. */
+/** Loadout use cases and business rules, always on behalf of one owner. The only writer of loadouts. */
 @Service
 @Transactional
 public class LoadoutService {
@@ -22,49 +22,50 @@ public class LoadoutService {
     }
 
     @Transactional(readOnly = true)
-    public List<LoadoutResponse> list(String frame) {
+    public List<LoadoutResponse> list(UUID ownerId, String frame) {
         List<Loadout> loadouts = frame == null
-                ? repository.findAllByOrderByUpdatedAtDesc()
-                : repository.findByFrameOrderByUpdatedAtDesc(frame);
+                ? repository.findByOwnerIdOrderByUpdatedAtDesc(ownerId)
+                : repository.findByOwnerIdAndFrameOrderByUpdatedAtDesc(ownerId, frame);
         return loadouts.stream().map(LoadoutMapper::toResponse).toList();
     }
 
     @Transactional(readOnly = true)
-    public LoadoutResponse get(UUID id) {
-        return LoadoutMapper.toResponse(find(id));
+    public LoadoutResponse get(UUID ownerId, UUID id) {
+        return LoadoutMapper.toResponse(find(ownerId, id));
     }
 
-    public LoadoutResponse create(LoadoutRequest request) {
-        requireRoomFor(request.frame());
-        Loadout loadout = new Loadout(request.frame());
+    public LoadoutResponse create(UUID ownerId, LoadoutRequest request) {
+        requireRoomFor(ownerId, request.frame());
+        Loadout loadout = new Loadout(ownerId, request.frame());
         apply(loadout, request);
         return LoadoutMapper.toResponse(repository.saveAndFlush(loadout));
     }
 
-    public LoadoutResponse update(UUID id, LoadoutRequest request) {
-        Loadout loadout = find(id);
+    public LoadoutResponse update(UUID ownerId, UUID id, LoadoutRequest request) {
+        Loadout loadout = find(ownerId, id);
         // Moving a loadout to another frame counts against that frame's cap.
-        if (!loadout.getFrame().equals(request.frame())) requireRoomFor(request.frame());
+        if (!loadout.getFrame().equals(request.frame())) requireRoomFor(ownerId, request.frame());
         apply(loadout, request);
         return LoadoutMapper.toResponse(repository.saveAndFlush(loadout));
     }
 
-    public LoadoutResponse setFavorite(UUID id, boolean favorite) {
-        Loadout loadout = find(id);
+    public LoadoutResponse setFavorite(UUID ownerId, UUID id, boolean favorite) {
+        Loadout loadout = find(ownerId, id);
         loadout.setFavorite(favorite);
         return LoadoutMapper.toResponse(repository.saveAndFlush(loadout));
     }
 
-    public void delete(UUID id) {
-        repository.delete(find(id));
+    public void delete(UUID ownerId, UUID id) {
+        repository.delete(find(ownerId, id));
     }
 
-    private Loadout find(UUID id) {
-        return repository.findWithColorsById(id).orElseThrow(() -> new LoadoutNotFoundException(id));
+    /** Another account's loadout is reported as not found, so ids can't be probed. */
+    private Loadout find(UUID ownerId, UUID id) {
+        return repository.findWithColorsByIdAndOwnerId(id, ownerId).orElseThrow(() -> new LoadoutNotFoundException(id));
     }
 
-    private void requireRoomFor(String frame) {
-        if (repository.countByFrame(frame) >= MAX_LOADOUTS_PER_FRAME) {
+    private void requireRoomFor(UUID ownerId, String frame) {
+        if (repository.countByOwnerIdAndFrame(ownerId, frame) >= MAX_LOADOUTS_PER_FRAME) {
             throw new LoadoutLimitExceededException(frame, MAX_LOADOUTS_PER_FRAME);
         }
     }
