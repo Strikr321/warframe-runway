@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: runway-api
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/runway}
+    username: ${DB_USER:runway}
+    password: ${DB_PASSWORD:runway}
+  jpa:
+    # Schema is owned by Flyway; Hibernate only checks that entities match it.
+    hibernate:
+      ddl-auto: validate
+    # Keep lazy loading inside service transactions, not during JSON rendering.
+    open-in-view: false
+  mvc:
+    problemdetails:
+      enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+runway:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
