@@ -7,8 +7,9 @@ updates:
     groups:
       angular:
         patterns: ['@angular/*', '@angular-devkit/*', 'angular-eslint']
-    # Angular and TypeScript majors are coupled (each Angular major supports specific TypeScript
-    # versions) and need `ng update` migrations, so they are upgraded deliberately, not by bot.
+    # Angular, TypeScript and Vitest majors are coupled (each Angular major supports specific
+    # TypeScript and Vitest versions via @angular/build peers) and need `ng update` migrations,
+    # so they are upgraded deliberately, not by bot.
     ignore:
       - dependency-name: '@angular/*'
         update-types: ['version-update:semver-major']
@@ -17,6 +18,8 @@ updates:
       - dependency-name: 'angular-eslint'
         update-types: ['version-update:semver-major']
       - dependency-name: 'typescript'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'vitest'
         update-types: ['version-update:semver-major']
   - package-ecosystem: github-actions
     directory: /
