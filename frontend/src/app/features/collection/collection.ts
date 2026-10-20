@@ -36,24 +36,24 @@ export class Collection {
   stats = computed(() => {
     const all = this.loadouts();
     return {
-      styled: new Set(all.map(l => l.frame)).size,
+      styled: new Set(all.map((l) => l.frame)).size,
       total: this.frames().length,
       loadouts: all.length,
-      favorites: all.filter(l => l.fav).length,
+      favorites: all.filter((l) => l.fav).length,
     };
   });
 
   recent = computed(() =>
-    [...this.loadouts()].sort((a, b) => b.edited.localeCompare(a.edited)).slice(0, 4)
+    [...this.loadouts()].sort((a, b) => b.edited.localeCompare(a.edited)).slice(0, 4),
   );
 
   filteredFrames = computed(() => {
     const q = this.search().toLowerCase();
     const f = this.filter();
     const all = this.loadouts();
-    return this.frames().filter(frame => {
+    return this.frames().filter((frame) => {
       if (q && !frame.toLowerCase().includes(q)) return false;
-      const count = all.filter(l => l.frame === frame).length;
+      const count = all.filter((l) => l.frame === frame).length;
       if (f === 'has') return count > 0;
       if (f === 'empty') return count === 0;
       return true;
@@ -63,7 +63,7 @@ export class Collection {
   filteredLoadouts = computed(() => {
     const q = this.search().toLowerCase();
     return this.loadouts()
-      .filter(l => !q || l.frame.toLowerCase().includes(q) || l.name.toLowerCase().includes(q))
+      .filter((l) => !q || l.frame.toLowerCase().includes(q) || l.name.toLowerCase().includes(q))
       .sort((a, b) => a.frame.localeCompare(b.frame) || a.name.localeCompare(b.name));
   });
 

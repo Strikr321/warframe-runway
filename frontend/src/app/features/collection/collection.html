@@ -7,7 +7,9 @@
 
 <div class="catalog-status">
   Frame catalog: {{ frames().length }} frames — {{ catalog.status() }}
-  @if (catalog.loading()) { <span class="catalog-loading"> · refreshing…</span> }
+  @if (catalog.loading()) {
+    <span class="catalog-loading"> · refreshing…</span>
+  }
 </div>
 
 @if (loadouts().length === 0) {
@@ -33,9 +35,25 @@
 
 <div class="card-grid">
   <div class="card-slot">
-    <div class="create-card" (click)="createForFrame()">
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+    <div
+      class="create-card"
+      (click)="createForFrame()"
+      role="button"
+      tabindex="0"
+      (keydown.enter)="createForFrame()"
+      (keydown.space)="$event.preventDefault(); createForFrame()"
+      aria-label="New loadout"
+    >
+      <svg
+        width="32"
+        height="32"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+      >
+        <line x1="12" y1="5" x2="12" y2="19" />
+        <line x1="5" y1="12" x2="19" y2="12" />
       </svg>
       <div class="create-card-label">New Loadout</div>
     </div>
@@ -68,4 +86,3 @@
     }
   }
 </div>
-

@@ -9,7 +9,7 @@
   height: 18px;
   cursor: pointer;
   border: 1.5px solid transparent;
-  transition: all .1s;
+  transition: all 0.1s;
 }
 .color-cell:hover {
   border-color: var(--gold-light);
@@ -22,5 +22,5 @@
   transform: scale(1.2);
   position: relative;
   z-index: 2;
-  box-shadow: 0 0 6px rgba(255, 255, 255, .6);
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.6);
 }

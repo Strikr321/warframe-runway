@@ -1,6 +1,13 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Attachments, ChannelKey, ColorChannelState, Loadout, MAX_LOADOUTS_PER_FRAME, emptyAttachments } from '../../core/models/loadout.model';
+import {
+  Attachments,
+  ChannelKey,
+  ColorChannelState,
+  Loadout,
+  MAX_LOADOUTS_PER_FRAME,
+  emptyAttachments,
+} from '../../core/models/loadout.model';
 import { CHANNELS, defaultColorState, summaryColors } from '../../data/channels.data';
 import { LoadoutService } from '../../core/services/loadout.service';
 import { FrameCatalogService } from '../../core/services/frame-catalog.service';
@@ -59,7 +66,7 @@ export class Builder {
   }
 
   onChannelChange(key: ChannelKey, next: ColorChannelState) {
-    this.colorState.update(s => ({ ...s, [key]: next }));
+    this.colorState.update((s) => ({ ...s, [key]: next }));
   }
 
   onFrameChange(frame: string) {
@@ -81,7 +88,9 @@ export class Builder {
     };
     const ok = this.store.save(draft);
     if (!ok) {
-      this.capMessage.set(`${this.frame()} already has ${MAX_LOADOUTS_PER_FRAME} loadouts — the max. Delete one first, or pick a different frame.`);
+      this.capMessage.set(
+        `${this.frame()} already has ${MAX_LOADOUTS_PER_FRAME} loadouts — the max. Delete one first, or pick a different frame.`,
+      );
       return;
     }
     this.router.navigateByUrl('/');

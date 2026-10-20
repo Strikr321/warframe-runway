@@ -1,6 +1,8 @@
 <div class="stats-banner">
   <div class="stat-item">
-    <div class="stat-value">{{ styled() }} <span class="stat-total">/ {{ total() }}</span></div>
+    <div class="stat-value">
+      {{ styled() }} <span class="stat-total">/ {{ total() }}</span>
+    </div>
     <div class="stat-label">Frames Styled</div>
     <div class="stat-bar"><div class="stat-bar-fill" [style.width.%]="pct"></div></div>
   </div>

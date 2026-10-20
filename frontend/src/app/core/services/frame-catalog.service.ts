@@ -4,7 +4,7 @@ import { FALLBACK_FRAMES } from '../../data/frames-fallback.data';
 
 export interface FrameInfo {
   name: string;
-  image: string;       // full CDN URL — cdn.warframestat.us/img/<file>
+  image: string; // full CDN URL — cdn.warframestat.us/img/<file>
   releaseDate?: string;
 }
 
@@ -34,17 +34,20 @@ export class FrameCatalogService {
   private readonly cached = this.readCache();
 
   /** Frame names, sorted. */
-  frames = signal<string[]>(this.cached?.infos.map(i => i.name) ?? FALLBACK_FRAMES);
+  frames = signal<string[]>(this.cached?.infos.map((i) => i.name) ?? FALLBACK_FRAMES);
   /** Frame names with portrait image URLs. */
   frameInfos = signal<FrameInfo[]>(this.cached?.infos ?? []);
 
   loading = signal(false);
   /** Caption text, e.g. "refreshed 3h ago". */
-  status = signal<string>(this.cached ? this.describeAge(this.cached.fetchedAt) : 'Using built-in frame list');
+  status = signal<string>(
+    this.cached ? this.describeAge(this.cached.fetchedAt) : 'Using built-in frame list',
+  );
   lastError = signal<string | null>(null);
 
   constructor() {
-    const isStale = !this.cached || (Date.now() - this.cached.fetchedAt) > FrameCatalogService.MAX_AGE_MS;
+    const isStale =
+      !this.cached || Date.now() - this.cached.fetchedAt > FrameCatalogService.MAX_AGE_MS;
     if (isStale) this.refresh();
   }
 
@@ -74,7 +77,9 @@ export class FrameCatalogService {
 
       // "X & Y" entries (Sirius & Orion) are two separately colored frames, so split them.
       // Dedup on the split names so "Orion & Sirius" collapses into the same two entries.
-      const names = item.name.includes(' & ') ? item.name.split(' & ').map(n => n.trim()) : [item.name];
+      const names = item.name.includes(' & ')
+        ? item.name.split(' & ').map((n) => n.trim())
+        : [item.name];
 
       for (const name of names) {
         if (seen.has(name)) continue;
@@ -90,7 +95,7 @@ export class FrameCatalogService {
     infos.sort((a, b) => a.name.localeCompare(b.name));
 
     this.frameInfos.set(infos);
-    this.frames.set(infos.map(i => i.name));
+    this.frames.set(infos.map((i) => i.name));
     this.writeCache({ fetchedAt: Date.now(), infos });
     this.loading.set(false);
     this.lastError.set(null);

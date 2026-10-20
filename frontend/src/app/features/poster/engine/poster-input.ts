@@ -2,9 +2,17 @@ import { Attachments, ChannelKey, ColorChannelState } from '../../../core/models
 import { PosterLayout } from '../../../data/layouts.data';
 
 /** Crop rectangle in the source image's own pixel coordinates. */
-export interface SourceCrop { srcX: number; srcY: number; srcW: number; srcH: number; }
+export interface SourceCrop {
+  srcX: number;
+  srcY: number;
+  srcW: number;
+  srcH: number;
+}
 
-export interface PosterColor { hex: string; label: string; }
+export interface PosterColor {
+  hex: string;
+  label: string;
+}
 
 /** Everything a renderer needs, captured once when "Generate Poster" is clicked. */
 export interface PosterInput {

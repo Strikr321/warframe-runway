@@ -1,5 +1,13 @@
 <div class="color-channel">
-  <div class="channel-header" (click)="toggle()">
+  <div
+    class="channel-header"
+    (click)="toggle()"
+    role="button"
+    tabindex="0"
+    (keydown.enter)="toggle()"
+    (keydown.space)="$event.preventDefault(); toggle()"
+    [attr.aria-expanded]="open()"
+  >
     <div class="channel-dot" [style.background]="state().hex"></div>
     <div class="channel-name">{{ channelName() }}</div>
     <div class="channel-label">{{ state().label }}</div>

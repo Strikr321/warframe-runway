@@ -11,6 +11,11 @@
     (mousemove)="onMove($event)"
     (mouseleave)="onLeave()"
     (click)="onCardClick()"
+    role="button"
+    tabindex="0"
+    (keydown.enter)="onCardClick()"
+    (keydown.space)="$event.preventDefault(); onCardClick()"
+    [attr.aria-label]="isEmpty ? 'Create loadout for ' + frame() : 'Open ' + frame()"
   >
     <!-- Gloss highlight tracks the mouse via CSS custom properties -->
     <div class="card-gloss" [style.--mouse-x]="glossX + '%'" [style.--mouse-y]="glossY + '%'"></div>
@@ -20,7 +25,18 @@
     }
 
     @if (!isEmpty) {
-      <div class="card-fav" [class.is-fav]="hasFav" (click)="onFavClick($event)">★</div>
+      <div
+        class="card-fav"
+        [class.is-fav]="hasFav"
+        (click)="onFavClick($event)"
+        role="button"
+        tabindex="0"
+        (keydown.enter)="onFavClick($event)"
+        (keydown.space)="$event.preventDefault(); onFavClick($event)"
+        aria-label="Toggle favorite"
+      >
+        ★
+      </div>
     }
 
     <div class="card-inner">
@@ -42,12 +58,56 @@
        creates its own stacking context, which would trap them below the
        fan-out mini-cards. -->
   @if (isEmpty) {
-    <div class="card-btn pos-br" (click)="onCreateClick($event)" title="Create loadout for {{ frame() }}">+</div>
+    <div
+      class="card-btn pos-br"
+      (click)="onCreateClick($event)"
+      role="button"
+      tabindex="0"
+      (keydown.enter)="onCreateClick($event)"
+      (keydown.space)="$event.preventDefault(); onCreateClick($event)"
+      title="Create loadout for {{ frame() }}"
+      aria-label="Create loadout"
+    >
+      +
+    </div>
   } @else if (loadouts().length === 1 && first) {
-    <div class="card-btn pos-br-stack" (click)="onEditClick($event)" title="Edit {{ first.name }}">&#9998;</div>
-    <div class="card-btn pos-br" (click)="onCreateClick($event)" title="Add another loadout">+</div>
+    <div
+      class="card-btn pos-br-stack"
+      (click)="onEditClick($event)"
+      role="button"
+      tabindex="0"
+      (keydown.enter)="onEditClick($event)"
+      (keydown.space)="$event.preventDefault(); onEditClick($event)"
+      title="Edit {{ first.name }}"
+      aria-label="Edit loadout"
+    >
+      &#9998;
+    </div>
+    <div
+      class="card-btn pos-br"
+      (click)="onCreateClick($event)"
+      role="button"
+      tabindex="0"
+      (keydown.enter)="onCreateClick($event)"
+      (keydown.space)="$event.preventDefault(); onCreateClick($event)"
+      title="Add another loadout"
+      aria-label="Add another loadout"
+    >
+      +
+    </div>
   } @else if (!atCap) {
-    <div class="card-btn pos-center" (click)="onCreateClick($event)" title="Add another loadout">+</div>
+    <div
+      class="card-btn pos-center"
+      (click)="onCreateClick($event)"
+      role="button"
+      tabindex="0"
+      (keydown.enter)="onCreateClick($event)"
+      (keydown.space)="$event.preventDefault(); onCreateClick($event)"
+      title="Add another loadout"
+      aria-label="Add another loadout"
+    >
+      +
+    </div>
   }
 
   <!-- Mini-cards stay mounted so hover only changes styles and CSS transitions animate. -->
@@ -57,7 +117,9 @@
       [style.width.px]="ringDiameter()"
       [style.height.px]="ringDiameter()"
       [style.opacity]="fanned() ? 1 : 0"
-      [style.transform]="fanned() ? 'translate(-50%,-50%) scale(1)' : 'translate(-50%,-50%) scale(.6)'"
+      [style.transform]="
+        fanned() ? 'translate(-50%,-50%) scale(1)' : 'translate(-50%,-50%) scale(.6)'
+      "
     ></div>
 
     @for (l of loadouts(); track l.id; let i = $index) {
@@ -67,9 +129,13 @@
         [style.pointer-events]="fanned() ? 'auto' : 'none'"
         [style.transform]="miniTransform(i)"
         (click)="onMiniClick(l, $event)"
+        role="button"
+        (keydown.enter)="onMiniClick(l, $event)"
+        (keydown.space)="$event.preventDefault(); onMiniClick(l, $event)"
+        [attr.tabindex]="fanned() ? 0 : -1"
       >
         <div class="fm-colors">
-          @for (c of l.colors.slice(0,3); track $index) {
+          @for (c of l.colors.slice(0, 3); track $index) {
             <div class="fm-dot" [style.background]="c"></div>
           }
         </div>

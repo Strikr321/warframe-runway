@@ -1,7 +1,10 @@
-<app-frame-selector [selected]="frame()" [frames]="catalog.frames()" (select)="onFrameChange($event)" />
+<app-frame-selector
+  [selected]="frame()"
+  [frames]="catalog.frames()"
+  (frameSelect)="onFrameChange($event)"
+/>
 
 <div class="main-layout">
-
   <app-loadout-form
     class="panel-slot"
     [creator]="creator()"
@@ -13,12 +16,12 @@
   />
 
   <div class="panel color-panel">
-    <div class="section-label" style="margin-bottom:10px">Color Palette</div>
+    <div class="section-label" style="margin-bottom: 10px">Color Palette</div>
     @for (ch of channels; track ch.key) {
       <app-color-channel
         [channelName]="ch.name"
         [state]="colorState()[ch.key]"
-        (change)="onChannelChange(ch.key, $event)"
+        (colorChange)="onChannelChange(ch.key, $event)"
       />
     }
   </div>
@@ -42,7 +45,8 @@
       <button class="btn-danger" (click)="delete()">Delete Loadout</button>
     }
     <button class="btn-secondary" (click)="cancel()">Cancel</button>
-    <button class="btn-primary" (click)="save()">{{ isEditing() ? 'Save Changes' : 'Create Loadout' }}</button>
+    <button class="btn-primary" (click)="save()">
+      {{ isEditing() ? 'Save Changes' : 'Create Loadout' }}
+    </button>
   </div>
-
 </div>

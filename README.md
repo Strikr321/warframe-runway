@@ -1,5 +1,7 @@
 # WARF▲ME Runway
 
+[![CI](https://github.com/Strikr321/warframe-runway/actions/workflows/ci.yml/badge.svg)](https://github.com/Strikr321/warframe-runway/actions/workflows/ci.yml)
+
 A full-stack fashion frame studio for Warframe — build color loadouts, generate shareable poster cards, and track your styled collection.
 
 **Stack:** Angular · Spring Boot · PostgreSQL
@@ -32,7 +34,7 @@ A full-stack fashion frame studio for Warframe — build color loadouts, generat
 | 5b | Live frame catalog from WFCD (cached daily) | ✅ |
 | 5c | Refactor: feature folders, split the poster generator, ToastService, comment cleanup | ✅ |
 | 5d | Show frame images, fix favorites, 404 + unsaved-changes guard | — |
-| 5e | Tests (Vitest), ESLint, GitHub Actions CI | — |
+| 5e | Tests (Vitest), ESLint, Prettier, GitHub Actions CI | ✅ |
 | 6 | Spring Boot + PostgreSQL: entities, REST API, DTOs, validation, JUnit + Testcontainers | — |
 | 7 | Connect Angular to the API (HttpClient, interceptor, import existing localStorage loadouts) | — |
 | 8 | OAuth2 login (Discord / Google) with Spring Security | — |
@@ -54,6 +56,15 @@ cd frontend
 npm install
 npm start
 # open http://localhost:4200
+```
+
+Checks (the same ones CI runs on every pull request):
+
+```bash
+npm run lint
+npm run format:check
+npm run test:ci
+npm run build
 ```
 
 ## Architecture

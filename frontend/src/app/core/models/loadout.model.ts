@@ -8,9 +8,9 @@ export interface Loadout {
   frame: string;
   name: string;
   creator: string;
-  colors: string[];              // 4-color summary shown on cards (derived at save time)
+  colors: string[]; // 4-color summary shown on cards (derived at save time)
   fav: boolean;
-  edited: string;                // ISO timestamp
+  edited: string; // ISO timestamp
   attachments?: Attachments;
   colorState?: Record<ChannelKey, ColorChannelState>;
 }
@@ -33,10 +33,20 @@ export interface Attachments {
 }
 
 export function emptyAttachments(): Attachments {
-  return { skin: '', helmet: '', chest: '', arms: '', legs: '', ephemera: '', signa: '', syandana: '' };
+  return {
+    skin: '',
+    helmet: '',
+    chest: '',
+    arms: '',
+    legs: '',
+    ephemera: '',
+    signa: '',
+    syandana: '',
+  };
 }
 
-export type ChannelKey = 'primary' | 'secondary' | 'tertiary' | 'accents' | 'em1' | 'em2' | 'en1' | 'en2';
+export type ChannelKey =
+  'primary' | 'secondary' | 'tertiary' | 'accents' | 'em1' | 'em2' | 'en1' | 'en2';
 
 export interface ColorChannelState {
   palette: string;

@@ -14,8 +14,10 @@
 export function detectTransparency(img: HTMLImageElement): boolean {
   const cv = document.createElement('canvas');
   // A 120px-wide sample is enough to answer this.
-  const sw = 120, sh = Math.max(1, Math.round(120 * img.naturalHeight / img.naturalWidth));
-  cv.width = sw; cv.height = sh;
+  const sw = 120,
+    sh = Math.max(1, Math.round((120 * img.naturalHeight) / img.naturalWidth));
+  cv.width = sw;
+  cv.height = sh;
   const ctx = cv.getContext('2d', { willReadFrequently: true })!;
   ctx.drawImage(img, 0, 0, sw, sh);
   const data = ctx.getImageData(0, 0, sw, sh).data;
@@ -24,7 +26,7 @@ export function detectTransparency(img: HTMLImageElement): boolean {
   for (let i = 3; i < data.length; i += 4) {
     if (data[i] < 250) nonOpaque++;
   }
-  return (nonOpaque / total) > 0.03; // >3% of the image has real transparency
+  return nonOpaque / total > 0.03; // >3% of the image has real transparency
 }
 
 /**
@@ -33,7 +35,9 @@ export function detectTransparency(img: HTMLImageElement): boolean {
  * limb or syandana crossing the border doesn't veto a real green screen.
  */
 export function detectMonochromeBackground(
-  data: Uint8ClampedArray, width: number, height: number,
+  data: Uint8ClampedArray,
+  width: number,
+  height: number,
 ): [number, number, number] | null {
   const margin = Math.max(2, Math.round(Math.min(width, height) * 0.02));
   const step = 4;
@@ -54,15 +58,21 @@ export function detectMonochromeBackground(
   if (samples.length < 50) return null;
 
   const mean: [number, number, number] = [0, 0, 0];
-  for (const s of samples) { mean[0] += s[0]; mean[1] += s[1]; mean[2] += s[2]; }
-  mean[0] /= samples.length; mean[1] /= samples.length; mean[2] /= samples.length;
+  for (const s of samples) {
+    mean[0] += s[0];
+    mean[1] += s[1];
+    mean[2] += s[2];
+  }
+  mean[0] /= samples.length;
+  mean[1] /= samples.length;
+  mean[2] /= samples.length;
 
   let near = 0;
   for (const s of samples) {
     const d = Math.hypot(s[0] - mean[0], s[1] - mean[1], s[2] - mean[2]);
     if (d < 30) near++;
   }
-  return (near / samples.length) >= 0.92 ? mean : null;
+  return near / samples.length >= 0.92 ? mean : null;
 }
 
 /**
@@ -85,19 +95,21 @@ export function detectMonochromeBackground(
  * near-black armor survives.
  */
 export function keyOutBackground(
-  data: Uint8ClampedArray, width: number, height: number,
+  data: Uint8ClampedArray,
+  width: number,
+  height: number,
   key: [number, number, number],
 ): number {
   const maxC = Math.max(key[0], key[1], key[2]);
   const minC = Math.min(key[0], key[1], key[2]);
   const isDark = maxC < 64;
-  const isSaturated = (maxC - minC) > 40;
+  const isSaturated = maxC - minC > 40;
   const total = width * height;
 
   if (isSaturated) {
     // ── Chroma unmixing ──
     const domIdx = key.indexOf(maxC);
-    const others = [0, 1, 2].filter(c => c !== domIdx);
+    const others = [0, 1, 2].filter((c) => c !== domIdx);
     // The key's signature: how much its dominant channel exceeds the rest
     const keyExcess = key[domIdx] - Math.max(key[others[0]], key[others[1]]);
     let full = 0;
@@ -106,7 +118,8 @@ export function keyOutBackground(
       if (excess <= 0) continue; // no detectable key contribution
       const f = excess / keyExcess; // backdrop fraction this pixel carries
       if (f >= 0.98) {
-        data[i + 3] = 0; full++; // effectively pure backdrop
+        data[i + 3] = 0;
+        full++; // effectively pure backdrop
         continue;
       }
       if (f < 0.04) continue; // noise floor — leave untouched
@@ -122,13 +135,14 @@ export function keyOutBackground(
   }
 
   // ── Neutral key: distance keying with smoothstep feather ──
-  const T1 = isDark ? 25 : 55;   // fully removed inside this distance
-  const T2 = isDark ? 55 : 110;  // fully kept beyond this distance
+  const T1 = isDark ? 25 : 55; // fully removed inside this distance
+  const T2 = isDark ? 55 : 110; // fully kept beyond this distance
   let removed = 0;
   for (let i = 0; i < data.length; i += 4) {
     const d = Math.hypot(data[i] - key[0], data[i + 1] - key[1], data[i + 2] - key[2]);
     if (d <= T1) {
-      data[i + 3] = 0; removed++;
+      data[i + 3] = 0;
+      removed++;
     } else if (d < T2) {
       const t = (d - T1) / (T2 - T1);
       const a = t * t * (3 - 2 * t); // smoothstep
@@ -147,7 +161,8 @@ export function tryRemoveMonochromeBackground(
   img: HTMLImageElement,
 ): { dataUrl: string; hex: string } | null {
   const cv = document.createElement('canvas');
-  cv.width = img.naturalWidth; cv.height = img.naturalHeight;
+  cv.width = img.naturalWidth;
+  cv.height = img.naturalHeight;
   const ctx = cv.getContext('2d', { willReadFrequently: true })!;
   ctx.drawImage(img, 0, 0);
   const imgData = ctx.getImageData(0, 0, cv.width, cv.height);
@@ -159,6 +174,6 @@ export function tryRemoveMonochromeBackground(
   if (removedFrac < 0.15) return null; // barely anything keyed -> probably not a backdrop
 
   ctx.putImageData(imgData, 0, 0);
-  const hex = '#' + key.map(c => Math.round(c).toString(16).padStart(2, '0')).join('');
+  const hex = '#' + key.map((c) => Math.round(c).toString(16).padStart(2, '0')).join('');
   return { dataUrl: cv.toDataURL('image/png'), hex };
 }
