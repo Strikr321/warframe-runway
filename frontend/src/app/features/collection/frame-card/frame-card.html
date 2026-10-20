@@ -1,5 +1,6 @@
 <div
   class="card-wrapper"
+  [class.fanned]="fanned()"
   [class.linked]="highlighted()"
   (mouseenter)="onWrapperEnter()"
   (mouseleave)="onWrapperLeave()"
@@ -146,6 +147,9 @@
         (keydown.space)="$event.preventDefault(); onMiniClick(l, $event)"
         [attr.tabindex]="fanned() ? 0 : -1"
       >
+        @if (image() && !imageFailed()) {
+          <img class="fm-portrait" [src]="image()" alt="" loading="lazy" decoding="async" />
+        }
         <div class="fm-colors">
           @for (c of (l | summaryColors).slice(0, 3); track $index) {
             <div class="fm-dot" [style.background]="c"></div>

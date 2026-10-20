@@ -2,6 +2,17 @@
   perspective: 800px;
   position: relative;
   animation: fadeInUp 0.5s ease both;
+  /* The fade-in animation gives each card its own stacking layer, so a card's fan-out can only
+     rise above later cards if the whole card does. Drop back only after the fan has collapsed. */
+  transition: z-index 0s 0.5s;
+}
+.card-wrapper:hover {
+  z-index: 20;
+  transition-delay: 0s;
+}
+.card-wrapper.fanned {
+  z-index: 30;
+  transition-delay: 0s;
 }
 
 /* Highlighted from the Recently Edited row */
@@ -286,9 +297,11 @@
   left: 50%;
   width: 70px;
   aspect-ratio: 3/4;
-  background: linear-gradient(135deg, rgba(200, 149, 42, 0.16), rgba(15, 5, 5, 0.96));
+  /* Opaque, so every mini looks the same whatever it lands on. */
+  background: linear-gradient(160deg, #2a170b, #0f0505 70%);
   border: 1px solid var(--gold);
   border-radius: 2px;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
@@ -299,6 +312,28 @@
   transition:
     transform 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.3),
     opacity 0.32s;
+}
+.fm-portrait {
+  position: absolute;
+  inset: 4% 0 auto;
+  width: 100%;
+  height: 80%;
+  object-fit: contain;
+  object-position: center top;
+  pointer-events: none;
+}
+/* Keeps the name and color dots readable over the portrait. */
+.fan-mini::after {
+  content: '';
+  position: absolute;
+  inset: 40% 0 0;
+  background: linear-gradient(to bottom, transparent, rgba(10, 4, 4, 0.95) 65%);
+  pointer-events: none;
+}
+.fm-colors,
+.fm-name {
+  position: relative;
+  z-index: 1;
 }
 .fan-mini:hover {
   border-color: var(--gold-light);
