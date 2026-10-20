@@ -45,8 +45,8 @@
       <button class="btn-danger" (click)="delete()">Delete Loadout</button>
     }
     <button class="btn-secondary" (click)="cancel()">Cancel</button>
-    <button class="btn-primary" (click)="save()">
-      {{ isEditing() ? 'Save Changes' : 'Create Loadout' }}
+    <button class="btn-primary" [disabled]="saving()" (click)="save()">
+      {{ saving() ? 'Saving…' : isEditing() ? 'Save Changes' : 'Create Loadout' }}
     </button>
   </div>
 </div>

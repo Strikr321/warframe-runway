@@ -9,11 +9,20 @@ export interface HasUnsavedChanges {
 }
 
 /** `/builder/:id` for a deleted or unknown loadout goes back to the Collection instead of opening a blank draft. */
-export const loadoutExistsGuard: CanActivateFn = (route) => {
+export const loadoutExistsGuard: CanActivateFn = async (route) => {
+  const store = inject(LoadoutService);
+  const toast = inject(ToastService);
+  const router = inject(Router);
+  await store.ensureLoaded();
+
   const id = route.paramMap.get('id');
-  if (id && inject(LoadoutService).byId(id)) return true;
-  inject(ToastService).show('That loadout no longer exists');
-  return inject(Router).createUrlTree(['/']);
+  if (id && store.byId(id)) return true;
+  toast.show(
+    store.state() === 'error'
+      ? "Can't load that loadout right now"
+      : 'That loadout no longer exists',
+  );
+  return router.createUrlTree(['/']);
 };
 
 export const unsavedChangesGuard: CanDeactivateFn<HasUnsavedChanges> = (component) =>
