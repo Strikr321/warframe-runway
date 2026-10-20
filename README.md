@@ -40,11 +40,19 @@ A full-stack fashion frame studio for Warframe — build color loadouts, generat
 | 10 | Sharing: public gallery, share links, QR code on posters | — |
 | 11 | Deploy on AWS (RDS, S3 + CloudFront, Elastic Beanstalk/ECS) with CI/CD | — |
 
+## Repository layout
+
+```
+frontend/   Angular app
+backend/    Spring Boot API (coming in step 6)
+```
+
 ## Run locally
 
 ```bash
+cd frontend
 npm install
-ng serve
+npm start
 # open http://localhost:4200
 ```
 
