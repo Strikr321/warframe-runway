@@ -54,6 +54,54 @@ header {
   box-shadow: 0 0 8px var(--gold);
 }
 
+/* ── Account (top right) ── */
+.account {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 30px;
+}
+.avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+}
+.account-name {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.account-btn {
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+  background: transparent;
+  border: 1px solid var(--border);
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: all 0.25s;
+}
+.account-btn:hover,
+.account-btn:focus-visible {
+  border-color: var(--gold);
+  background: rgba(200, 149, 42, 0.12);
+}
+@media (max-width: 640px) {
+  .account {
+    position: static;
+    justify-content: center;
+    margin-bottom: 12px;
+  }
+  .account-name {
+    display: none;
+  }
+}
+
 nav {
   display: flex;
   justify-content: center;

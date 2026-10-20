@@ -38,6 +38,13 @@ export class LoadoutService {
     return this.loaded;
   }
 
+  /** Forgets the signed-out user's loadouts so the next account starts clean. */
+  reset(): void {
+    this._loadouts.set([]);
+    this._state.set('loading');
+    this.loaded = null;
+  }
+
   async reload(): Promise<void> {
     this._state.set('loading');
     try {

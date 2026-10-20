@@ -1,4 +1,16 @@
 <header>
+  <div class="account">
+    @if (auth.user(); as user) {
+      @if (user.avatarUrl) {
+        <img class="avatar" [src]="user.avatarUrl" alt="" referrerpolicy="no-referrer" />
+      }
+      <span class="account-name">{{ user.name }}</span>
+      <button type="button" class="account-btn" (click)="signOut()">Sign out</button>
+    } @else if (auth.status() === 'signed-out') {
+      <button type="button" class="account-btn" (click)="signIn()">Sign in</button>
+    }
+  </div>
+
   <div class="header-logo">WARFR<span>&#9650;</span>ME</div>
   <div class="header-sub">Fashion Frame Runway</div>
   <div class="header-line"><div class="header-diamond"></div></div>

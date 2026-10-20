@@ -3,6 +3,7 @@ import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { firstValueFrom } from 'rxjs';
 import { ToastService } from '../../shared/toast/toast.service';
+import { AuthService } from '../services/auth.service';
 import { apiErrorInterceptor, problemDetail } from './api-error.interceptor';
 
 describe('apiErrorInterceptor', () => {
@@ -47,6 +48,20 @@ describe('apiErrorInterceptor', () => {
 
   it('ignores requests outside the API', async () => {
     await fail('https://example.com/data.json', 500);
+    expect(toast.message()).toBe('');
+  });
+
+  it('treats a 401 from the API as an ended session', async () => {
+    const markSignedOut = vi.spyOn(TestBed.inject(AuthService), 'markSignedOut');
+    await fail('/api/loadouts', 401);
+    expect(markSignedOut).toHaveBeenCalled();
+    expect(toast.message()).toContain('session ended');
+  });
+
+  it('stays quiet when the /api/me probe finds no session', async () => {
+    const markSignedOut = vi.spyOn(TestBed.inject(AuthService), 'markSignedOut');
+    await fail('/api/me', 401);
+    expect(markSignedOut).not.toHaveBeenCalled();
     expect(toast.message()).toBe('');
   });
 });
