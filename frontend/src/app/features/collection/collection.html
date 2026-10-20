@@ -64,6 +64,7 @@
       <app-frame-card
         [frame]="frame"
         [loadouts]="loadoutsFor(frame)"
+        [image]="portraits().get(frame) ?? null"
         [highlighted]="hoveredFrame() === frame"
         (openLoadout)="openLoadoutById($event)"
         (createRequested)="createForFrame(frame)"
@@ -76,6 +77,7 @@
       <app-frame-card
         [frame]="l.frame"
         [loadouts]="[l]"
+        [image]="portraits().get(l.frame) ?? null"
         [badge]="false"
         [highlighted]="hoveredFrame() === l.frame"
         (openLoadout)="openLoadoutById($event)"

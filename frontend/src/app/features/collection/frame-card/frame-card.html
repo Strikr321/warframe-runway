@@ -20,6 +20,17 @@
     <!-- Gloss highlight tracks the mouse via CSS custom properties -->
     <div class="card-gloss" [style.--mouse-x]="glossX + '%'" [style.--mouse-y]="glossY + '%'"></div>
 
+    @if (image() && !imageFailed()) {
+      <img
+        class="card-portrait"
+        [src]="image()"
+        alt=""
+        loading="lazy"
+        decoding="async"
+        (error)="imageFailed.set(true)"
+      />
+    }
+
     @if (badge() && loadouts().length > 0) {
       <div class="card-badge">{{ loadouts().length }}</div>
     }

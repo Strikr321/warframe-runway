@@ -32,6 +32,8 @@ export class Collection {
   hoveredFrame = signal<string | null>(null);
 
   frames = this.catalog.frames;
+  /** Portrait URL per frame name; empty while running on the offline fallback list. */
+  portraits = computed(() => new Map(this.catalog.frameInfos().map((i) => [i.name, i.image])));
 
   stats = computed(() => {
     const all = this.loadouts();

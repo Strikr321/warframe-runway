@@ -14,6 +14,10 @@ import { SummaryColorsPipe } from '../../../shared/pipes/summary-colors.pipe';
 })
 export class FrameCard {
   frame = input.required<string>();
+  /** Portrait URL from the frame catalog, if available. */
+  image = input<string | null>(null);
+  /** Hides the portrait if it fails to load rather than showing a broken image. */
+  imageFailed = signal(false);
   loadouts = input.required<Loadout[]>();
   /** Count badge; shown in By-Warframe view only. */
   badge = input<boolean>(true);
