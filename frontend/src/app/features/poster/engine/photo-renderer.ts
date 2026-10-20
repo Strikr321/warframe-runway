@@ -46,14 +46,14 @@ export class PhotoPosterRenderer {
         const imgX = MARGIN + (usableW - imgDisplayW) / 2;
 
         this.drawBackground(ctx, W, H);
-        this.drawDecorations(ctx, W, H, MARGIN);
+        this.drawDecorations(ctx, W, H);
         this.drawHeader(ctx, W);
         this.drawMaskedImage(ctx, img, crop, imgX, imgTop, imgDisplayW, imgDisplayH, (ox, w, h) => this.drawNameBarOverlay(ox, w, h));
 
         const divY = imgTop + imgDisplayH + gap / 2;
         drawDivider(ctx, MARGIN, W - MARGIN, divY);
         this.drawInfoPanelSplit(ctx, MARGIN + 10, infoY, usableW - 20, infoH);
-        this.drawDecorations(ctx, W, H, MARGIN);
+        this.drawDecorations(ctx, W, H);
       } else {
         const H = 1020;
         cv.width = W; cv.height = H;
@@ -64,7 +64,7 @@ export class PhotoPosterRenderer {
         const imgX = MARGIN + (usableW - imgW) / 2;
 
         this.drawBackground(ctx, W, H);
-        this.drawDecorations(ctx, W, H, MARGIN);
+        this.drawDecorations(ctx, W, H);
         this.drawHeader(ctx, W);
         this.drawPlaceholder(ctx, imgX, imgTop, imgW, availImgH);
         drawDivider(ctx, MARGIN, W - MARGIN, imgTop + availImgH + gap / 2);
@@ -86,12 +86,11 @@ export class PhotoPosterRenderer {
         const mainH = nameY - 8 - imgTop;
         const gap = 15;
         const centerW = Math.round(usableW * splits.centerFraction);
-        const sideW = Math.round((usableW - centerW - gap * 2) / 2);
         const size = this.computePosterImageSize(crop, mainH, Math.round(centerW * 0.5), centerW);
         const imgX = MARGIN + (usableW - size.w) / 2;
 
         this.drawBackground(ctx, W, H);
-        this.drawDecorations(ctx, W, H, MARGIN);
+        this.drawDecorations(ctx, W, H);
         this.drawHeader(ctx, W);
         this.drawMaskedImage(ctx, img, crop, imgX, imgTop, size.w, size.h);
 
@@ -101,7 +100,7 @@ export class PhotoPosterRenderer {
         if (rightW > 50) this.drawColorsSection(ctx, rightX, imgTop + 20, rightW, size.h - 40);
 
         this.drawNameBar(ctx, W, MARGIN, nameY, renderCfg.namePosition);
-        this.drawDecorations(ctx, W, H, MARGIN);
+        this.drawDecorations(ctx, W, H);
       } else {
         const H = 1120;
         cv.width = W; cv.height = H;
@@ -112,7 +111,7 @@ export class PhotoPosterRenderer {
         const imgX = MARGIN + (usableW - imgW) / 2;
 
         this.drawBackground(ctx, W, H);
-        this.drawDecorations(ctx, W, H, MARGIN);
+        this.drawDecorations(ctx, W, H);
         this.drawHeader(ctx, W);
         this.drawPlaceholder(ctx, imgX, imgTop, imgW, mainH);
         const leftX = MARGIN + 5, leftW = imgX - leftX - gap;
@@ -146,12 +145,12 @@ export class PhotoPosterRenderer {
         infoW = usableW - size.w - gap;
 
         this.drawBackground(ctx, W, H);
-        this.drawDecorations(ctx, W, H, MARGIN);
+        this.drawDecorations(ctx, W, H);
         this.drawHeader(ctx, W);
         this.drawMaskedImage(ctx, img, crop, imgX, imgTop, size.w, size.h);
         this.drawInfoPanel(ctx, infoX, imgTop + 10, infoW, mainH - 20);
         this.drawNameBar(ctx, W, MARGIN, nameY, renderCfg.namePosition);
-        this.drawDecorations(ctx, W, H, MARGIN);
+        this.drawDecorations(ctx, W, H);
       } else {
         const H = 1120;
         cv.width = W; cv.height = H;
@@ -163,7 +162,7 @@ export class PhotoPosterRenderer {
         const infoX = isRight ? MARGIN : (MARGIN + imgW + gap);
 
         this.drawBackground(ctx, W, H);
-        this.drawDecorations(ctx, W, H, MARGIN);
+        this.drawDecorations(ctx, W, H);
         this.drawHeader(ctx, W);
         this.drawPlaceholder(ctx, imgX, imgTop, imgW, mainH);
         this.drawInfoPanel(ctx, infoX, imgTop + 10, infoW, mainH - 20);
@@ -199,7 +198,7 @@ export class PhotoPosterRenderer {
     ctx.fillRect(0, 0, W, H);
   }
 
-  private drawDecorations(ctx: CanvasRenderingContext2D, W: number, H: number, MARGIN: number) {
+  private drawDecorations(ctx: CanvasRenderingContext2D, W: number, H: number) {
     const outerInset = 18;
     const innerInset = 25;
     const diamondCenter = (outerInset + innerInset) / 2;

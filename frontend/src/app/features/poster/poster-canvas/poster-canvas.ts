@@ -117,7 +117,14 @@ export class PosterCanvas {
   // ═══════════════════════════════════════════════════════════
 
   onZoneClick(e: MouseEvent) {
-    if ((e.target as HTMLElement).closest('.img-controls')) return;
+    if ((e.target as HTMLElement).closest('.img-controls, .mode-badge')) return;
+    this.fileInputRef.nativeElement.click();
+  }
+
+  /** Enter/Space on the zone itself (not on the sliders or buttons inside it) opens the file picker. */
+  onZoneKey(e: Event) {
+    if (e.target !== e.currentTarget) return;
+    e.preventDefault();
     this.fileInputRef.nativeElement.click();
   }
 
@@ -299,6 +306,10 @@ export class PosterCanvas {
     this.colorPickerTarget.set(null);
   }
 
+  onBackdropClick(e: MouseEvent) {
+    if (e.target === e.currentTarget) this.closeColorPicker();
+  }
+
   onPickerPaletteSelect(e: Event) {
     this.pickerPaletteName.set((e.target as HTMLSelectElement).value);
   }
@@ -384,7 +395,7 @@ export class PosterCanvas {
     try {
       canvas.toBlob((blob) => {
         if (!blob) { this.showToast('Copy not available — use Download'); return; }
-        if (navigator.clipboard && (window as any).ClipboardItem) {
+        if (navigator.clipboard && 'ClipboardItem' in window) {
           navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
             .then(() => this.showToast('Poster copied to clipboard!'))
             .catch(() => this.showToast('Copy blocked — use Download instead'));

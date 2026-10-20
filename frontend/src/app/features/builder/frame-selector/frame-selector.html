@@ -5,7 +5,7 @@
       <button
         class="frame-btn"
         [class.active]="frame === selected()"
-        (click)="select.emit(frame)"
+        (click)="frameSelect.emit(frame)"
       >{{ frame }}</button>
     }
   </div>

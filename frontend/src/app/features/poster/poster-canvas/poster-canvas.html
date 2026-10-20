@@ -10,6 +10,8 @@
          [class.drag-over]="dragOver()"
          #uploadZone
          (click)="onZoneClick($event)"
+         role="button" tabindex="0" aria-label="Upload a screenshot"
+         (keydown.enter)="onZoneKey($event)" (keydown.space)="onZoneKey($event)"
          (dragover)="onDragOver($event)"
          (dragleave)="onDragLeave()"
          (drop)="onDrop($event)">
@@ -52,7 +54,7 @@
       <input #fileInput type="file" accept="image/*" style="display:none" (change)="onFileChange($event)" />
 
       @if (hasImage() && detectedTransparent() !== null) {
-        <div class="mode-badge" (click)="$event.stopPropagation()">
+        <div class="mode-badge">
           @if (bgRemovalOn()) {
             <span class="mode-dot on"></span> Solid background removed
             <button class="mode-switch" (click)="toggleBgRemoval()">use original</button>
@@ -70,7 +72,7 @@
       }
 
       @if (hasImage()) {
-        <div class="img-controls" #imgControls (click)="$event.stopPropagation()">
+        <div class="img-controls" #imgControls>
           <div class="ic-row">
             <span class="ic-label">Zoom</span>
             <input type="range" class="ic-slider" min="30" max="200" step="1" [value]="imgZoom()"
@@ -95,14 +97,14 @@
       <div class="poster-colors-row">
         <div class="poster-color-col">
           <div class="poster-color-label">Color 1 (Top)</div>
-          <div class="poster-color-swatch" (click)="openColorPicker(1)">
+          <div class="poster-color-swatch" (click)="openColorPicker(1)" role="button" tabindex="0" (keydown.enter)="openColorPicker(1)" (keydown.space)="$event.preventDefault(); openColorPicker(1)">
             <div class="swatch-fill" [style.background]="posterColor1()?.hex ?? '#3a0808'"></div>
             <span class="swatch-label">{{ posterColor1()?.label ?? '— Auto —' }}</span>
           </div>
         </div>
         <div class="poster-color-col">
           <div class="poster-color-label">Color 2 (Bottom)</div>
-          <div class="poster-color-swatch" (click)="openColorPicker(2)">
+          <div class="poster-color-swatch" (click)="openColorPicker(2)" role="button" tabindex="0" (keydown.enter)="openColorPicker(2)" (keydown.space)="$event.preventDefault(); openColorPicker(2)">
             <div class="swatch-fill" [style.background]="posterColor2()?.hex ?? '#080202'"></div>
             <span class="swatch-label">{{ posterColor2()?.label ?? '— Auto —' }}</span>
           </div>
@@ -123,7 +125,7 @@
       <div class="section-label" style="margin-bottom:12px">Poster Layout</div>
       <div class="layout-options">
         @for (key of layoutKeys; track key) {
-          <div class="layout-option" [class.active]="key === selectedLayoutKey()" (click)="selectLayout(key)">
+          <div class="layout-option" [class.active]="key === selectedLayoutKey()" (click)="selectLayout(key)" role="button" tabindex="0" (keydown.enter)="selectLayout(key)" (keydown.space)="$event.preventDefault(); selectLayout(key)" [attr.aria-pressed]="key === selectedLayoutKey()">
             <div class="layout-thumb">
               <div class="lt-header"></div>
               <div class="lt-img" [style.left]="layouts[key].thumb.img.left" [style.right]="layouts[key].thumb.img.right"
@@ -162,8 +164,8 @@
 
   <!-- Poster color picker modal -->
   @if (colorPickerTarget(); as target) {
-    <div class="modal open" (click)="closeColorPicker()">
-      <div class="modal-box" (click)="$event.stopPropagation()">
+    <div class="modal open" role="presentation" (click)="onBackdropClick($event)" (keydown.escape)="closeColorPicker()">
+      <div class="modal-box" role="dialog" aria-modal="true" aria-label="Choose poster color">
         <button class="modal-close" (click)="closeColorPicker()">&times;</button>
         <div class="section-label">Choose Poster Color {{ target }}{{ target === 1 ? ' (Top)' : ' (Bottom)' }}</div>
         <select class="palette-select" [value]="pickerPaletteName()" (change)="onPickerPaletteSelect($event)">

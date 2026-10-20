@@ -13,7 +13,7 @@ import { PaletteGrid } from '../../../shared/palette-grid/palette-grid';
 export class ColorChannel {
   channelName = input.required<string>();
   state = input.required<ColorChannelState>();
-  change = output<ColorChannelState>();
+  colorChange = output<ColorChannelState>();
 
   open = signal(false);
 

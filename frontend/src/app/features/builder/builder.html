@@ -1,4 +1,4 @@
-<app-frame-selector [selected]="frame()" [frames]="catalog.frames()" (select)="onFrameChange($event)" />
+<app-frame-selector [selected]="frame()" [frames]="catalog.frames()" (frameSelect)="onFrameChange($event)" />
 
 <div class="main-layout">
 
@@ -18,7 +18,7 @@
       <app-color-channel
         [channelName]="ch.name"
         [state]="colorState()[ch.key]"
-        (change)="onChannelChange(ch.key, $event)"
+        (colorChange)="onChannelChange(ch.key, $event)"
       />
     }
   </div>

@@ -6,6 +6,7 @@
         class="recent-card"
         [class.linked]="highlightedFrame() === l.frame"
         (click)="open.emit(l)"
+        role="button" tabindex="0" (keydown.enter)="open.emit(l)" (keydown.space)="$event.preventDefault(); open.emit(l)"
         (mouseenter)="hoverChange.emit({ frame: l.frame, on: true })"
         (mouseleave)="hoverChange.emit({ frame: l.frame, on: false })"
       >

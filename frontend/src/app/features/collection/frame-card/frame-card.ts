@@ -99,19 +99,19 @@ export class FrameCard {
     if (this.isEmpty) this.createRequested.emit();
     else if (this.first) this.openLoadout.emit(this.first.id);
   }
-  onMiniClick(l: Loadout, e: MouseEvent) {
+  onMiniClick(l: Loadout, e: Event) {
     e.stopPropagation();
     this.openLoadout.emit(l.id);
   }
-  onCreateClick(e: MouseEvent) {
+  onCreateClick(e: Event) {
     e.stopPropagation();
     this.createRequested.emit();
   }
-  onEditClick(e: MouseEvent) {
+  onEditClick(e: Event) {
     e.stopPropagation();
     if (this.first) this.openLoadout.emit(this.first.id);
   }
-  onFavClick(e: MouseEvent) {
+  onFavClick(e: Event) {
     e.stopPropagation();
     this.toggleFav.emit();
   }

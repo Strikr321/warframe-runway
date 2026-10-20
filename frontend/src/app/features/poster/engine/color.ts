@@ -71,7 +71,7 @@ export function dominantHueColor(imgData: ImageData): [number, number, number] {
     const v = max;
     const s = max > 0 ? (max-min)/max : 0;
     if (s <= 0.28 || v <= 0.18 || v >= 0.97) continue;
-    let h = 0;
+    let h: number;
     if (max === min) h = 0;
     else if (max === r) h = ((g-b)/(max-min)) % 6;
     else if (max === g) h = (b-r)/(max-min) + 2;

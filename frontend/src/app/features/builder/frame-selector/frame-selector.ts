@@ -10,5 +10,5 @@ import { Component, input, output } from '@angular/core';
 export class FrameSelector {
   selected = input.required<string>();
   frames = input.required<string[]>();
-  select = output<string>();
+  frameSelect = output<string>();
 }
