@@ -11,10 +11,23 @@ export const CHANNELS: { key: ChannelKey; name: string; defaultColor: string }[]
   { key: 'en2', name: 'Energy II', defaultColor: '#a020e0' },
 ];
 
+/** Label of a channel the user hasn't picked a color for yet. */
+export const UNSET_COLOR_LABEL = '— Select —';
+
+export function isColorPicked(state: ColorChannelState): boolean {
+  return state.label !== UNSET_COLOR_LABEL;
+}
+
 export function defaultColorState(): Record<ChannelKey, ColorChannelState> {
   const state = {} as Record<ChannelKey, ColorChannelState>;
   for (const ch of CHANNELS) {
-    state[ch.key] = { palette: 'Tenno', row: 0, col: 0, hex: ch.defaultColor, label: '— Select —' };
+    state[ch.key] = {
+      palette: 'Tenno',
+      row: 0,
+      col: 0,
+      hex: ch.defaultColor,
+      label: UNSET_COLOR_LABEL,
+    };
   }
   return state;
 }

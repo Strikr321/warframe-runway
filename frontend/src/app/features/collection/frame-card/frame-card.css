@@ -335,7 +335,8 @@
   position: relative;
   z-index: 1;
 }
-.fan-mini:hover {
+.fan-mini:hover,
+.fan-mini.linked {
   border-color: var(--gold-light);
   box-shadow: 0 0 14px rgba(240, 192, 80, 0.5);
 }

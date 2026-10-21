@@ -8,11 +8,13 @@ import { StatsBanner } from './stats-banner/stats-banner';
 import { RecentRow } from './recent-row/recent-row';
 import { ControlsBar, ViewMode, ChipFilter } from './controls-bar/controls-bar';
 import { FrameCard } from './frame-card/frame-card';
+import { HoverTarget, isHoverMatch } from './hover-target';
 import { ToastService } from '../../shared/toast/toast.service';
 
 /**
- * The frame grid, stats, and Recently Edited row. `hoveredFrame` links the
- * grid and the Recently Edited row so hovering either highlights both.
+ * The frame grid, stats, and Recently Edited row. `hovered` links the grid and the Recently
+ * Edited row: hovering a recent loadout lights it, opens its frame's fan and marks its mini-card;
+ * hovering a grid card lights that frame's recent loadouts.
  */
 @Component({
   selector: 'app-collection',
@@ -34,7 +36,7 @@ export class Collection {
   view = signal<ViewMode>('frame');
   search = signal('');
   filter = signal<ChipFilter>('all');
-  hoveredFrame = signal<string | null>(null);
+  hovered = signal<HoverTarget | null>(null);
 
   frames = this.catalog.frames;
   /** Portrait URL per frame name; empty while running on the offline fallback list. */
@@ -90,10 +92,16 @@ export class Collection {
 
   // ── Hover linking ─────────────────────────────────────────
   onFrameHover(frame: string, on: boolean) {
-    this.hoveredFrame.set(on ? frame : null);
+    this.hovered.set(on ? { frame, loadoutId: null } : null);
   }
-  onRecentHover(evt: { frame: string; on: boolean }) {
-    this.hoveredFrame.set(evt.on ? evt.frame : null);
+  /** Whether the grid card for `frame` (or one loadout of it, in By Loadout view) lights up. */
+  isCardLinked(frame: string, loadoutId: string | null = null): boolean {
+    return isHoverMatch(this.hovered(), frame, loadoutId);
+  }
+  /** The loadout hovered in Recently Edited, if it belongs to `frame`. */
+  linkedLoadoutFor(frame: string): string | null {
+    const h = this.hovered();
+    return h?.frame === frame ? h.loadoutId : null;
   }
 
   // ── Favorites ─────────────────────────────────────────────

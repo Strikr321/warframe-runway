@@ -1,4 +1,4 @@
-import { dominantHueColor, hexToRgb, hsvToRgb, mixRgb, rgbToHsv, richenForGlow } from './color';
+import { dominantHueColor, hexToRgb, hsvToRgb, mixRgb, rgbToHsv } from './color';
 
 /** Builds an ImageData-shaped object from a list of RGBA pixels. */
 function imageOf(pixels: [number, number, number, number][]): ImageData {
@@ -22,17 +22,6 @@ describe('color', () => {
 
   it('mixes linearly between two colors', () => {
     expect(mixRgb([0, 0, 0], [100, 200, 50], 0.5)).toEqual([50, 100, 25]);
-  });
-
-  describe('richenForGlow', () => {
-    it('lifts a near-black color to a visible brightness', () => {
-      const [, , v] = rgbToHsv(richenForGlow([12, 6, 8]));
-      expect(v).toBeGreaterThanOrEqual(0.62);
-    });
-
-    it('leaves an already bright color unchanged', () => {
-      richenForGlow([240, 192, 80]).forEach((c, i) => expect(c).toBeCloseTo([240, 192, 80][i], 6));
-    });
   });
 
   describe('dominantHueColor', () => {

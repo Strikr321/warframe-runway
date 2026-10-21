@@ -1,6 +1,6 @@
 import { PosterInput, SourceCrop } from './poster-input';
 import { PosterLayout } from '../../../data/layouts.data';
-import { CHANNELS } from '../../../data/channels.data';
+import { CHANNELS, isColorPicked } from '../../../data/channels.data';
 import { LOADOUT_FIELDS } from '../../../data/loadout-fields.data';
 import { rgbaStr } from './color';
 import { drawDivider, loadImgEl } from './draw-helpers';
@@ -468,7 +468,7 @@ export class PhotoPosterRenderer {
 
       ctx.font = '11px Raleway, sans-serif';
       ctx.fillStyle = '#907060';
-      ctx.fillText(s.label || '—', x + textOffX, cy + 24);
+      ctx.fillText(isColorPicked(s) ? s.label : '—', x + textOffX, cy + 24);
 
       if (i < CHANNELS.length - 1) {
         ctx.beginPath();
