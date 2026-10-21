@@ -23,6 +23,8 @@ export class FrameCard {
   badge = input<boolean>(true);
   /** True when the matching Recently Edited card is hovered. */
   highlighted = input<boolean>(false);
+  /** A loadout of this frame hovered in Recently Edited: opens the fan and marks its mini-card. */
+  linkedLoadoutId = input<string | null>(null);
 
   /** Loadout id to open: the first loadout from the card body, or a specific mini-card. */
   openLoadout = output<string>();
@@ -71,7 +73,13 @@ export class FrameCard {
   }
 
   // ── Fan-out ──────────────────────────────────────────────────
-  fanned = signal(false);
+  private hoverFanned = signal(false);
+  /** Open on hover, or while one of this frame's loadouts is hovered in Recently Edited. */
+  fanned = computed(
+    () =>
+      this.loadouts().length >= 2 &&
+      (this.hoverFanned() || this.loadouts().some((l) => l.id === this.linkedLoadoutId())),
+  );
 
   /** 1 flat, 2 up/down, 3 triangle, 4 square, 5 pentagon, 6 hexagon. */
   radius = computed(() => {
@@ -100,11 +108,11 @@ export class FrameCard {
   }
 
   onWrapperEnter() {
-    if (this.loadouts().length >= 2) this.fanned.set(true);
+    this.hoverFanned.set(true);
     this.hoverChange.emit(true);
   }
   onWrapperLeave() {
-    this.fanned.set(false);
+    this.hoverFanned.set(false);
     this.hoverChange.emit(false);
   }
 

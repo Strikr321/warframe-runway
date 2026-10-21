@@ -4,14 +4,14 @@
     @for (l of loadouts(); track l.id) {
       <div
         class="recent-card"
-        [class.linked]="highlightedFrame() === l.frame"
+        [class.linked]="isLinked(l)"
         (click)="open.emit(l)"
         role="button"
         tabindex="0"
         (keydown.enter)="open.emit(l)"
         (keydown.space)="$event.preventDefault(); open.emit(l)"
-        (mouseenter)="hoverChange.emit({ frame: l.frame, on: true })"
-        (mouseleave)="hoverChange.emit({ frame: l.frame, on: false })"
+        (mouseenter)="hoverChange.emit({ frame: l.frame, loadoutId: l.id })"
+        (mouseleave)="hoverChange.emit(null)"
       >
         <div class="recent-card-frame">{{ l.frame }}</div>
         <div class="recent-card-name">{{ l.name }}</div>

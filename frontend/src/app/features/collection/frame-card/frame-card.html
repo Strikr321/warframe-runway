@@ -141,6 +141,7 @@
         [style.opacity]="fanned() ? 1 : 0"
         [style.pointer-events]="fanned() ? 'auto' : 'none'"
         [style.transform]="miniTransform(i)"
+        [class.linked]="l.id === linkedLoadoutId()"
         (click)="onMiniClick(l, $event)"
         role="button"
         (keydown.enter)="onMiniClick(l, $event)"

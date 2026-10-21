@@ -52,9 +52,9 @@
 } @else {
   <app-recent-row
     [loadouts]="recent()"
-    [highlightedFrame]="hoveredFrame()"
+    [hovered]="hovered()"
     (open)="openLoadoutById($event.id)"
-    (hoverChange)="onRecentHover($event)"
+    (hoverChange)="hovered.set($event)"
   />
 }
 
@@ -96,7 +96,8 @@
         [frame]="frame"
         [loadouts]="loadoutsFor(frame)"
         [image]="portraits().get(frame) ?? null"
-        [highlighted]="hoveredFrame() === frame"
+        [highlighted]="isCardLinked(frame)"
+        [linkedLoadoutId]="linkedLoadoutFor(frame)"
         (openLoadout)="openLoadoutById($event)"
         (createRequested)="createForFrame(frame)"
         (toggleFav)="toggleFav($event)"
@@ -110,7 +111,7 @@
         [loadouts]="[l]"
         [image]="portraits().get(l.frame) ?? null"
         [badge]="false"
-        [highlighted]="hoveredFrame() === l.frame"
+        [highlighted]="isCardLinked(l.frame, l.id)"
         (openLoadout)="openLoadoutById($event)"
         (createRequested)="createForFrame(l.frame)"
         (toggleFav)="toggleFav($event)"
