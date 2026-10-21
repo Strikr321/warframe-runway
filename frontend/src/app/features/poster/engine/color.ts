@@ -89,16 +89,6 @@ export function rgbToHsv(rgb: [number, number, number]): [number, number, number
 }
 
 /**
- * Floors HSV saturation and value so the glow reads as bright even when a
- * dark color lands in the glow slot (e.g. after a swap). Bright inputs pass
- * through unchanged.
- */
-export function richenForGlow(rgb: [number, number, number]): [number, number, number] {
-  const [h, s, v] = rgbToHsv(rgb);
-  return hsvToRgb(h, Math.max(s, 0.18), Math.max(v, 0.62));
-}
-
-/**
  * The cutout's most prominent vivid hue: a hue histogram weighted by
  * saturation x value, rendered at its peak as a vivid color. Averaging
  * instead would mix energy colors with dark armor into muddy grey.

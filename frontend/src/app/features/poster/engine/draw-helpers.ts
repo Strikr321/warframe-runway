@@ -43,16 +43,6 @@ export function drawTrackedText(
   }
 }
 
-/** Scale to fit within maxW x maxH, preserving aspect ratio. */
-export function fitContain(
-  bounds: { w: number; h: number },
-  maxH: number,
-  maxW: number,
-): { targetW: number; targetH: number } {
-  const scale = Math.min(maxH / bounds.h, maxW / bounds.w);
-  return { targetW: Math.round(bounds.w * scale), targetH: Math.round(bounds.h * scale) };
-}
-
 export function drawContactShadow(
   ctx: CanvasRenderingContext2D,
   cx: number,
@@ -102,4 +92,12 @@ export function loadImgEl(src: string): Promise<HTMLImageElement> {
     img.onload = () => resolve(img);
     img.src = src;
   });
+}
+
+/** Shortens `text` with an ellipsis until it fits `maxWidth` in the context's current font. */
+export function fitText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string {
+  if (ctx.measureText(text).width <= maxWidth) return text;
+  let cut = text;
+  while (cut.length > 1 && ctx.measureText(cut + '…').width > maxWidth) cut = cut.slice(0, -1);
+  return cut.trimEnd() + '…';
 }
